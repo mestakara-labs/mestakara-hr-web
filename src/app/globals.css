@@ -1,0 +1,3 @@
+/* Urutan penting: Tailwind dulu, baru design system Mestakara (warna, font, radius, typo-*). */
+@import "tailwindcss";
+@import "@mestakara/ui/styles.css";
