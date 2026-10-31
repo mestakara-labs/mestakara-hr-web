@@ -156,7 +156,8 @@ dikumpulkan dalam dropdown (`▾`) — Usulan Kepegawaian, Pengaturan Jadwal, Ma
 
 | Grup | Menu | URL | Status |
 |---|---|---|---|
-| Menu Utama | Dasbor | `/dashboard` | Placeholder (sapaan + kotak abu-abu) |
+| Menu Utama | Dasbor | `/dashboard` | ✅ Front end Tahap A (bagian 1–3) — menunggu backend |
+| | Analitik SDM | `/dashboard/analitik` | ✅ Front end Tahap A (topik Karyawan & Upah) — menunggu backend |
 | Kepegawaian | Data Karyawan | `/dashboard/karyawan` | ✅ Selesai |
 | | Usulan Kepegawaian ▾ › Penambahan Karyawan | `/dashboard/penambahan` | ✅ Daftar usulan + wizard 4 langkah + detail (Draf/Berlaku/Dibatalkan) |
 | | Usulan Kepegawaian ▾ › Penonaktifan Karyawan | `/dashboard/penonaktifan` | ✅ Daftar usulan + wizard 4 langkah + detail (dampak, ganti dokumen, batalkan) |
@@ -1168,3 +1169,38 @@ npx next build
     **Data uji Oktober 2026 masih ada** (menunggu konfirmasi owner untuk dihapus): daftar hadir, lembur reguler (236), lembur DW
     (1.698), potongan uji (A. ROHMAN BPJS 50.000; PPh 10.000 untuk A. ROHMAN, A. SUKMANA, ACEP MAULANA), perubahan penanda tangan
     Umum (bagian "Dibuat Oleh"), Malabar, Food and Beverage, dan riwayat kunci/buka September 2026.
+55. **Perbaikan error Next** (31 Oktober 2026): (1) dev: `Route "/": Could not validate instant` karena halaman "/" hanya
+    `redirect("/dashboard")` -> `export const instant = false` di `src/app/page.tsx`. (2) `next build`: "[backend] GET ... gagal:
+    needs to bail out of prerendering ... nextUrl.search" — sinyal internal prerender tertangkap `try/catch` di `forward` /
+    `forwardFile` (`lib/api-client.ts`) -> `unstable_rethrow(error)` di awal `catch`. Build bersih, semua `/api/*` dinamis (ƒ).
+    Aturan: setiap `try/catch` di route handler / Server Component yang membungkus API Next (request, cookies, headers, redirect,
+    notFound) WAJIB memanggil `unstable_rethrow(error)` dulu.
+56. **Dashboard & Analitik SDM — Tahap A, front end** (31 Oktober 2026). Keputusan: tidak ada filter global; SETIAP kartu & grafik
+    berdiri sendiri dengan periode rentang bulan (bawaan awal tahun s.d. hari ini, maks 24 bulan, `lib/period-range.ts`); grafik &
+    matriks juga punya filter Sub Unit / Bidang / Segmen / Objek Penempatan / Cost Center / Kelompok Daftar Upah / Status
+    (`lib/dashboard-filters.ts`); kartu ringkasan & KPI tanpa filter dimensi. Bagian: 1 Ringkasan Eksekutif, 2 Komposisi Tenaga
+    Kerja, 3 Biaya Upah & Lembur (tanpa Target vs Upah Lembur DW), 4–7 (Kehadiran & Lembur, Pergerakan, Regenerasi & Pensiun,
+    Organisasi) = Tahap B. Pilihan periode/filter tidak disimpan (kembali bawaan saat dibuka).
+    Bentuk data widget seragam (`types/api/dashboard.ts`: kpi, series, distribution, matrix, table, list) -> komponen
+    `components/shared/dashboard/` (WidgetCard, PeriodRangePicker, WidgetFilterDialog, FilterOptionsContext, KpiTile,
+    SeriesChart [batang/garis/bertumpuk, mendatar otomatis, onSelect], DistributionChart [donat/batang], HeatMatrixTable
+    [Jumlah/Persen], MiniTable, ActionList, DashboardSection); warna dari token `--chart-*` (`lib/chart-colors.ts`);
+    `hooks/useDashboardWidget` (pakai data GET /api/dashboard selama bawaan, selain itu ambil ulang kartu itu saja).
+    Halaman Analitik SDM (`/dashboard/analitik`, menu Menu Utama): Topik (Karyawan, Upah Casual & DW), Metrik, Periode, Lihat per,
+    Pisah per (matriks), Filter (chip + telusuri dengan klik), Jumlah/Persen, Batang/Garis/Donat, Urutkan, Top N, Ekspor Excel
+    (`features/analitik/`, `lib/analytics-rules.ts`, `types/api/analytics.ts`). Route BFF: `/api/dashboard`,
+    `/api/dashboard/widgets/[key]`, `/api/dashboard/filter-options`, `/api/analytics`, `/api/analytics/export`.
+    `tsc` & `eslint` lolos.
+57. **Dashboard & Analitik SDM Tahap A — diuji dengan backend** (31 Oktober 2026). Kontrak disesuaikan ke backend: GET /dashboard
+    `widgets` = DAFTAR (dipetakan per `key` di DashboardPage) + `from`, `to`, `period_label`; filter-options `employment_statuses`
+    = [{id, name}]; GET /analytics = { topic, metric, group_by, split_by, unit, from, to, filters, type: "rows"|"matrix", summary,
+    rows? , data? (matriks) } -> dirapikan `toAnalyticsView` (lib/analytics-rules.ts); `summary.count` = jumlah KELOMPOK (kartu
+    "Jumlah Kelompok" & "Rata-rata per Kelompok"). 23 widget lengkap & bentuknya cocok; angka upah = Daftar Upah.
+    Diuji: periode per kartu (hanya kartu itu diambil ulang, "Periode khusus", ↺), grafik bertumpuk + filter Sub Unit + Lihat per
+    Segmen, Analitik (ringkasan, telusuri klik baris -> filter + Lihat per berikutnya, topik Upah + Pisah per = matriks, ekspor Excel).
+    Perbaikan tampilan: kepala kartu (judul & tombol satu baris, keterangan selebar kartu), SeriesChart otomatis mendatar bila nama
+    kategori panjang, ujung sumbu dibulatkan "cantik", tanpa desimal di sumbu, "Periode khusus" hanya bila periode diubah, kalimat
+    "▲ x% dibanding periode sebelumnya". **Masalah backend**: `to` = hari ini ditolak ("Tanggal tidak boleh melewati hari ini") karena
+    `Carbon::parse` memakai UTC sedangkan `DataPeriod::today()` WIB -> semua kartu dengan periode bawaan gagal; analitik Upah dengan
+    Pisah per + filter butuh ±16 detik. Prompt perbaikan sudah diberikan; uji ulang periode bawaan, matriks, donat, tabel, dan
+    Perlu Tindakan menunggu perbaikan itu.

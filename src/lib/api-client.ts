@@ -5,6 +5,7 @@
  * Komponen client tidak boleh mengimpor file ini — pakai @/lib/http-client.
  */
 import { cookies } from "next/headers";
+import { unstable_rethrow } from "next/navigation";
 import { NextRequest, NextResponse } from "next/server";
 
 import { SESSION_COOKIE } from "@/lib/session-cookie";
@@ -77,6 +78,8 @@ export async function forward(request: NextRequest, endpoint: string) {
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
+    // Sinyal internal Next (mis. berhenti prerender saat `next build`) harus diteruskan, bukan dianggap backend gagal.
+    unstable_rethrow(error);
     console.error(`[backend] ${request.method} ${endpoint} gagal:`, error);
     return backendUnavailable();
   }
@@ -107,6 +110,8 @@ export async function forwardFile(request: NextRequest, endpoint: string) {
     // Diteruskan sebagai byte apa adanya, supaya filenya tidak rusak.
     return new NextResponse(await response.arrayBuffer(), { status: response.status, headers });
   } catch (error) {
+    // Sinyal internal Next (mis. berhenti prerender saat `next build`) harus diteruskan, bukan dianggap backend gagal.
+    unstable_rethrow(error);
     console.error(`[backend] GET ${endpoint} gagal:`, error);
     return backendUnavailable();
   }

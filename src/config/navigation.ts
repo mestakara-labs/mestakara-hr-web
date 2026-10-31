@@ -2,6 +2,7 @@ import {
   BriefcaseBusiness,
   CalendarCheck2,
   CalendarDays,
+  ChartNoAxesCombined,
   ClipboardList,
   Database,
   LayoutDashboard,
@@ -62,6 +63,8 @@ export const navigationConfig: NavGroup[] = [
         icon: LayoutDashboard,
         url: "/dashboard",
       },
+      // Grafik yang diatur sendiri lewat tombol-tombol (topik, metrik, periode, lihat per, filter).
+      { title: "Analitik SDM", icon: ChartNoAxesCombined, url: "/dashboard/analitik" },
     ],
   },
   {
