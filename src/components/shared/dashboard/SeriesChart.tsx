@@ -26,6 +26,9 @@ interface SeriesChartProps {
   onSelect?: (categoryKey: string) => void;
 }
 
+/** Huruf label sumbu (px) — kecil supaya muat di layar HP. */
+const AXIS_TICK = { fontSize: 11 };
+
 /** Nama kategori yang lebih panjang dari ini membuat grafik "auto" mendatar (supaya namanya terbaca utuh). */
 const LONG_LABEL = 14;
 
@@ -78,6 +81,7 @@ export function SeriesChart({ data, layout = "auto", onSelect }: SeriesChartProp
           tickFormatter={horizontal ? tick : undefined}
           domain={horizontal ? [0, withHeadroom] : undefined}
           allowDecimals={data.unit === "persen"}
+          tick={AXIS_TICK}
           tickLine={false}
           axisLine={false}
         />
@@ -87,7 +91,8 @@ export function SeriesChart({ data, layout = "auto", onSelect }: SeriesChartProp
           tickFormatter={horizontal ? undefined : tick}
           domain={horizontal ? undefined : [0, withHeadroom]}
           allowDecimals={data.unit === "persen"}
-          width={horizontal ? 150 : 80}
+          tick={AXIS_TICK}
+          width={horizontal ? 120 : 72}
           tickLine={false}
           axisLine={false}
         />
@@ -109,7 +114,7 @@ export function SeriesChart({ data, layout = "auto", onSelect }: SeriesChartProp
         {data.series.length > 1 && <ChartLegend content={<ChartLegendContent />} />}
         {data.series.map((item, index) =>
           item.kind === "line" ? (
-            <Line key={item.key} type="monotone" dataKey={`s${index}`} stroke={`var(--color-s${index})`} strokeWidth={2} dot={false} />
+            <Line key={item.key} type="monotoneX" dataKey={`s${index}`} stroke={`var(--color-s${index})`} strokeWidth={2} dot={false} />
           ) : (
             <Bar
               key={item.key}

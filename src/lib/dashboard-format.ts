@@ -34,3 +34,18 @@ export function formatCompact(value: number, unit: DashboardUnit): string {
 export function formatShare(value: number, total: number): string {
   return `${(total === 0 ? 0 : (value / total) * 100).toLocaleString("id-ID", { maximumFractionDigits: 1 })}%`;
 }
+
+/**
+ * Isi sel tabel / matriks: ringkas, satuan orang / jam / hari tidak diulang di setiap sel
+ * (cukup disebut sekali, lihat unitCaption). Rupiah & persen tetap bertanda.
+ *   (93, "orang") -> "93"   (3627600, "rupiah") -> "Rp 3.627.600"   (91.8, "persen") -> "91,8%"
+ */
+export function formatCell(value: number, unit: DashboardUnit): string {
+  if (unit === "rupiah" || unit === "persen") return formatValue(value, unit);
+  return value.toLocaleString("id-ID", { maximumFractionDigits: 1 });
+}
+
+/** Keterangan satuan di atas tabel: "orang" -> "Satuan: orang"; rupiah / persen -> null (sudah bertanda). */
+export function unitCaption(unit: DashboardUnit): string | null {
+  return unit === "orang" || unit === "jam" || unit === "hari" ? `Satuan: ${unit}` : null;
+}

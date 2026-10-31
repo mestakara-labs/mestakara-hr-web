@@ -16,9 +16,9 @@ import { DEFAULT_PAGE_SIZE } from "./tableConfig";
  * Aturan penting: setiap kali urutan atau filter berubah, tabel kembali ke
  * HALAMAN PERTAMA, supaya hasilnya langsung terlihat dari atas.
  */
-export function useDataTableState(defaultSorting: SortingState = []) {
+export function useDataTableState(defaultSorting: SortingState = [], defaultColumnFilters: ColumnFiltersState = []) {
   const [sorting, setSortingState] = useState<SortingState>(defaultSorting);
-  const [columnFilters, setColumnFiltersState] = useState<ColumnFiltersState>([]);
+  const [columnFilters, setColumnFiltersState] = useState<ColumnFiltersState>(defaultColumnFilters);
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: DEFAULT_PAGE_SIZE,
@@ -41,13 +41,14 @@ export function useDataTableState(defaultSorting: SortingState = []) {
   /** Kembalikan urutan dan filter ke keadaan awal. */
   function reset() {
     setSortingState(defaultSorting);
-    setColumnFiltersState([]);
+    setColumnFiltersState(defaultColumnFilters);
     goToFirstPage();
   }
 
   /** true kalau urutan atau filter sudah diubah user (tombol Reset ditampilkan). */
   const isChanged =
-    columnFilters.length > 0 || JSON.stringify(sorting) !== JSON.stringify(defaultSorting);
+    JSON.stringify(columnFilters) !== JSON.stringify(defaultColumnFilters) ||
+    JSON.stringify(sorting) !== JSON.stringify(defaultSorting);
 
   return {
     sorting,

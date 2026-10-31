@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@mestakara/ui/avatar";
 import { Badge } from "@mestakara/ui/badge";
+import type { ColumnFiltersState } from "@tanstack/react-table";
 
 import {
   actionsColumn,
@@ -12,7 +13,9 @@ import {
   defineTableConfig,
   rowNumberColumn,
   toFilterOptions,
+  type ColumnFilterValue,
 } from "@/components/shared/data-table";
+import { EMPLOYEE_ACTIVE_STATUS, EMPLOYEE_ACTIVE_STATUSES } from "@/lib/activation-rules";
 import { formatMonths, formatDate, getAgeInMonths, parseDate } from "@/lib/date";
 import {
   EDUCATION_OPTIONS,
@@ -23,6 +26,7 @@ import {
 import { getInitials } from "@/lib/initials";
 import type { EmployeeProfileResource } from "@/types/api/employee";
 
+import { EmployeeActiveStatusBadge } from "./EmployeeActiveStatusBadge";
 import { getEmployeeRetirement } from "./employee-retirement";
 import { RetirementStatusBadge } from "./RetirementStatusBadge";
 
@@ -39,6 +43,9 @@ const EMPTY = "-";
 /** Label kategori pensiun, urut dari yang paling dekat: ["Sudah Pensiun", "≤ 1 bulan", ...]. */
 const PERIOD_LABELS = RETIREMENT_PERIODS.map((period) => period.label);
 
+/** Filter bawaan tabel: hanya karyawan Aktif (bisa diubah lewat ikon corong kolom Status Kepegawaian). */
+const ACTIVE_ONLY_FILTER: ColumnFiltersState = [{ id: "active_status", value: { values: [EMPLOYEE_ACTIVE_STATUS.active] } }];
+
 /** Urutan kategori pensiun untuk pengurutan kolom. "-" (non-Tetap) diletakkan paling akhir. */
 function periodOrder(period: string): number {
   const index = PERIOD_LABELS.indexOf(period);
@@ -48,7 +55,8 @@ function periodOrder(period: string): number {
 /**
  * Kolom-kolom tabel karyawan:
  *
- *   No | Nama (cari, urut, klik = detail) | Email (cari) | NIK (cari, urut) | Status (filter) | Jenis Kelamin (filter)
+ *   No | Nama (cari, urut, klik = detail) | Email (cari) | NIK (cari, urut) | No. Registrasi (cari)
+ *      | Status Kepegawaian (filter, bawaan Aktif) | Status (filter) | Jenis Kelamin (filter)
  *      | Usia "55 tahun 7 bulan" (urut) | Tanggal Pensiun (urut) | Status Pensiun (filter, urut)
  *      | Pendidikan (filter) | Telepon (cari) | WhatsApp (cari) | Aksi (Lihat Detail, Edit, Hapus)
  *
@@ -64,7 +72,8 @@ function createKaryawanTableConfig(onDelete: (employee: EmployeeProfileResource)
   return defineTableConfig<EmployeeProfileResource>({
     getRowId: (employee) => employee.id,
     emptyMessage: "Tidak ada karyawan yang cocok dengan pencarian atau filter.",
-    tableClassName: "min-w-360",
+    defaultColumnFilters: ACTIVE_ONLY_FILTER,
+    tableClassName: "min-w-384",
     columns: col.columns([
       rowNumberColumn<EmployeeProfileResource>(),
 
@@ -107,6 +116,13 @@ function createKaryawanTableConfig(onDelete: (employee: EmployeeProfileResource)
         id: "registration_number",
         header: "No. Registrasi",
         meta: { search: { placeholder: "Cari no. registrasi..." }, nowrap: true, cellClassName: "typo-label-m" },
+      }),
+
+      // Aktif / Belum Aktif / Nonaktif pada tanggal acuan Periode Data. Bawaannya hanya Aktif (lihat ACTIVE_ONLY_FILTER).
+      col.accessor("active_status", {
+        header: "Status Kepegawaian",
+        meta: { filter: { options: toFilterOptions(EMPLOYEE_ACTIVE_STATUSES) }, nowrap: true },
+        cell: ({ getValue }) => <EmployeeActiveStatusBadge status={getValue()} />,
       }),
 
       col.accessor("employment_status", {
@@ -193,13 +209,21 @@ interface KaryawanTableProps {
   /** Tanggal acuan Periode Data, "YYYY-MM-DD" */
   referenceDate: string;
   onDelete: (employee: EmployeeProfileResource) => void;
+  /** Filter kolom berubah (dipakai halaman untuk Ekspor Excel & kalimat filter pensiun). Kirim fungsi stabil, mis. setState. */
+  onFiltersChange: (filters: ColumnFiltersState) => void;
+}
+
+/** Status kepegawaian yang dicentang di filter tabel; [] = tidak difilter (semua status). */
+export function selectedActiveStatuses(filters: ColumnFiltersState): string[] {
+  const value = filters.find((filter) => filter.id === "active_status")?.value as ColumnFilterValue | undefined;
+  return value?.values ?? [];
 }
 
 /** Tabel data karyawan. Cari, filter, urut, dan halaman diurus oleh DataTable. */
-export function KaryawanTable({ employees, referenceDate, onDelete }: KaryawanTableProps) {
+export function KaryawanTable({ employees, referenceDate, onDelete, onFiltersChange }: KaryawanTableProps) {
   // Konfigurasi dibuat ulang hanya kalau tanggal acuan berubah (bukan di setiap render).
   // Urutan, filter, dan halaman tabel tetap tersimpan walaupun konfigurasinya dibuat ulang.
   const config = useMemo(() => createKaryawanTableConfig(onDelete, referenceDate), [onDelete, referenceDate]);
 
-  return <DataTable config={config} data={employees} />;
+  return <DataTable config={config} data={employees} onColumnFiltersChange={onFiltersChange} />;
 }

@@ -1,7 +1,7 @@
 "use client";
 
-import { createContext, useContext, useState, type ReactNode } from "react";
-import { useTable, type ReactTable, type RowData } from "@tanstack/react-table";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { useTable, type ColumnFiltersState, type ReactTable, type RowData } from "@tanstack/react-table";
 
 import {
   dataTableFeatures,
@@ -73,6 +73,7 @@ interface DataTableProviderProps<TRow extends RowData> {
   config: TableConfig<TRow>;
   data: TRow[];
   selection?: RowSelection;
+  onColumnFiltersChange?: (filters: ColumnFiltersState) => void;
   children: ReactNode;
 }
 
@@ -85,9 +86,15 @@ export function DataTableProvider<TRow extends RowData>({
   config,
   data,
   selection,
+  onColumnFiltersChange,
   children,
 }: DataTableProviderProps<TRow>) {
-  const state = useDataTableState(config.defaultSorting);
+  const state = useDataTableState(config.defaultSorting, config.defaultColumnFilters);
+
+  // Kabari halaman setiap kali filter kolom berubah (mis. supaya Ekspor Excel ikut filter tabel).
+  useEffect(() => {
+    onColumnFiltersChange?.(state.columnFilters);
+  }, [state.columnFilters, onColumnFiltersChange]);
 
   const table = useTable({
     features: dataTableFeatures,

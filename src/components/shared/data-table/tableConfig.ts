@@ -1,4 +1,4 @@
-import type { RowData, SortingState } from "@tanstack/react-table";
+import type { ColumnFiltersState, RowData, SortingState } from "@tanstack/react-table";
 
 import type { DataTableColumnDef } from "./dataTableFeatures";
 
@@ -12,6 +12,11 @@ export interface TableConfig<TRow extends RowData> {
   getRowId: (row: TRow) => string;
   /** Urutan awal, mis. [{ id: "code", desc: false }] */
   defaultSorting?: SortingState;
+  /**
+   * Filter kolom saat tabel pertama kali tampil (dan setelah Reset), mis. hanya karyawan Aktif:
+   * [{ id: "active_status", value: { values: ["Aktif"] } }]
+   */
+  defaultColumnFilters?: ColumnFiltersState;
   /** Pesan saat tidak ada baris yang cocok */
   emptyMessage?: string;
   /** Lebar minimum tabel, mis. "min-w-200" untuk tabel berkolom banyak */

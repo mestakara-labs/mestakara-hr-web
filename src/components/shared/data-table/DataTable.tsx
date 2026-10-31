@@ -1,6 +1,6 @@
 "use client";
 
-import type { RowData } from "@tanstack/react-table";
+import type { ColumnFiltersState, RowData } from "@tanstack/react-table";
 
 import { ColumnFilterDialog } from "./ColumnFilterDialog";
 import { DataTableContent } from "./DataTableContent";
@@ -19,6 +19,8 @@ interface DataTableProps<TRow extends RowData> {
    * di daftar kolom). Kosongkan untuk tabel biasa.
    */
   selection?: RowSelection;
+  /** Dipanggil setiap kali filter kolom berubah (termasuk saat pertama tampil). Kirim fungsi yang stabil, mis. setState. */
+  onColumnFiltersChange?: (filters: ColumnFiltersState) => void;
 }
 
 /**
@@ -40,9 +42,9 @@ interface DataTableProps<TRow extends RowData> {
  * @example
  * <DataTable config={bidangTableConfig} data={divisions} />
  */
-export function DataTable<TRow extends RowData>({ config, data, selection }: DataTableProps<TRow>) {
+export function DataTable<TRow extends RowData>({ config, data, selection, onColumnFiltersChange }: DataTableProps<TRow>) {
   return (
-    <DataTableProvider config={config} data={data} selection={selection}>
+    <DataTableProvider config={config} data={data} selection={selection} onColumnFiltersChange={onColumnFiltersChange}>
       <div className="flex flex-col gap-3">
         <DataTableToolbar />
         <DataTableContent />

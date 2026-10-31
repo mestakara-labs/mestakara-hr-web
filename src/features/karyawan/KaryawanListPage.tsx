@@ -5,14 +5,15 @@ import Link from "next/link";
 import { UserPlus } from "lucide-react";
 import { Button } from "@mestakara/ui/button";
 import { Card, CardContent } from "@mestakara/ui/card";
-import { NativeSelect, NativeSelectOption } from "@mestakara/ui/native-select";
+import type { ColumnFiltersState } from "@tanstack/react-table";
 
 import { ConfirmDeleteDialog } from "@/components/shared/ConfirmDeleteDialog";
+import { FieldNote } from "@/components/shared/FieldNote";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { PageError, PageLoading } from "@/components/shared/PageState";
 import { useApiGet } from "@/hooks/useApiGet";
 import { useDeleteConfirm } from "@/hooks/useDeleteConfirm";
-import { EMPLOYEE_ACTIVE_STATUS, EMPLOYEE_ACTIVE_STATUSES } from "@/lib/activation-rules";
+import { EMPLOYEE_ACTIVE_STATUS } from "@/lib/activation-rules";
 import { apiDelete } from "@/lib/http-client";
 import { currentPeriod, firstYearOf, periodReferenceDate, toPeriodParam, type DataPeriod } from "@/lib/period-rules";
 import type { EmployeeProfileResource } from "@/types/api/employee";
@@ -25,7 +26,7 @@ import {
 } from "./employee-retirement";
 import { ExportKaryawanButton } from "./ExportKaryawanButton";
 import { KaryawanStats } from "./KaryawanStats";
-import { KaryawanTable } from "./KaryawanTable";
+import { KaryawanTable, selectedActiveStatuses } from "./KaryawanTable";
 import { PeriodFilter } from "./PeriodFilter";
 import { RetirementFilter } from "./RetirementFilter";
 
@@ -37,10 +38,12 @@ import { RetirementFilter } from "./RetirementFilter";
  *      /api/employees?period=YYYY-MM. Status, jabatan, dan masa kerja dihitung server pada TANGGAL ACUAN
  *      periode (akhir bulan; bulan berjalan = hari ini). Usia & pensiun dihitung di sini dengan tanggal yang sama.
  *   2. Tampilkan kartu statistik (dari karyawan AKTIF saja)
- *   3. Filter "Status Kepegawaian" (bawaan Aktif) lalu "Pensiun pada periode" menyaring karyawan lebih dulu
- *   4. Tampilkan KaryawanTable dari hasil filter itu (cari, filter, urut, dan halaman diurus DataTable)
+ *   3. Filter "Pensiun pada periode" menyaring karyawan lebih dulu
+ *   4. Tampilkan KaryawanTable dari hasil filter itu (cari, filter, urut, dan halaman diurus DataTable).
+ *      Kolom "Status Kepegawaian" di tabel bawaannya hanya Aktif; ubah lewat ikon corong.
  *   5. Hapus DRAF karyawan (Belum Aktif) lewat dialog konfirmasi, lalu muat ulang datanya
- *   6. "Ekspor Excel" mengunduh file Excel dari backend, ikut "Periode Data" & "Status Kepegawaian"
+ *   6. "Ekspor Excel" mengunduh file Excel dari backend, ikut "Periode Data" & filter Status Kepegawaian tabel
+ *      (tepat satu status dicentang = status itu; selain itu = semua karyawan)
  */
 export function KaryawanListPage() {
   const [period, setPeriod] = useState<DataPeriod>(() => currentPeriod());
@@ -51,12 +54,19 @@ export function KaryawanListPage() {
     `/api/employees?period=${toPeriodParam(period)}`,
   );
   const [retirementFilter, setRetirementFilter] = useState<RetirementFilterValue>(EMPTY_RETIREMENT_FILTER);
-  /** Status kepegawaian yang ditampilkan; "" = semua */
-  const [activeStatus, setActiveStatus] = useState<string>(EMPLOYEE_ACTIVE_STATUS.active);
+  /** Filter kolom tabel (dikabari KaryawanTable); bawaannya Status Kepegawaian = Aktif */
+  const [tableFilters, setTableFilters] = useState<ColumnFiltersState>([]);
+  /** Status kepegawaian yang dicentang di tabel; [] = semua */
+  const activeStatuses = selectedActiveStatuses(tableFilters);
+  /** Untuk Ekspor Excel: backend hanya menerima satu status; "" = semua karyawan */
+  const exportStatus = activeStatuses.length === 1 ? activeStatuses[0] : "";
 
   const activeEmployees = (employees ?? []).filter((employee) => employee.active_status === EMPLOYEE_ACTIVE_STATUS.active);
-  const byStatus = (employees ?? []).filter((employee) => !activeStatus || employee.active_status === activeStatus);
-  const shownEmployees = filterByRetirement(byStatus, retirementFilter);
+  const shownEmployees = filterByRetirement(employees ?? [], retirementFilter);
+  // Jumlah untuk kalimat filter pensiun: ikut status kepegawaian yang dicentang di tabel.
+  const retirementCount = shownEmployees.filter(
+    (employee) => activeStatuses.length === 0 || activeStatuses.includes(employee.active_status),
+  ).length;
 
   const hapus = useDeleteConfirm<EmployeeProfileResource>({
     onDelete: async (employee) => {
@@ -96,34 +106,24 @@ export function KaryawanListPage() {
                 // Tahun paling awal = tahun Tanggal Masuk karyawan paling lama
                 firstYear={firstYearOf(employees.map((employee) => employee.hire_date))}
                 loading={refreshing}
-                action={<ExportKaryawanButton period={period} activeStatus={activeStatus} />}
+                action={<ExportKaryawanButton period={period} activeStatus={exportStatus} />}
               />
-              <label className="flex flex-wrap items-center gap-2 typo-body-s text-fg-secondary">
-                Status Kepegawaian
-                <NativeSelect
-                  aria-label="Status kepegawaian"
-                  value={activeStatus}
-                  onChange={(event) => setActiveStatus(event.target.value)}
-                  className="w-48"
-                >
-                  {EMPLOYEE_ACTIVE_STATUSES.map((status) => (
-                    <NativeSelectOption key={status} value={status}>
-                      {status}
-                    </NativeSelectOption>
-                  ))}
-                  <NativeSelectOption value="">Semua</NativeSelectOption>
-                </NativeSelect>
-                <span className="text-fg-tertiary">
-                  Belum Aktif = draf dari Penambahan Karyawan yang belum berlaku.
-                </span>
-              </label>
               <RetirementFilter
                 value={retirementFilter}
                 onChange={setRetirementFilter}
                 yearOptions={retirementYearOptions(employees)}
-                resultCount={shownEmployees.length}
+                resultCount={retirementCount}
               />
-              <KaryawanTable employees={shownEmployees} referenceDate={referenceDate} onDelete={hapus.ask} />
+              <FieldNote>
+                Tabel bawaannya hanya menampilkan karyawan Aktif. Klik ikon corong di kolom Status Kepegawaian untuk
+                melihat karyawan Nonaktif atau Belum Aktif (draf dari Penambahan Karyawan yang belum berlaku).
+              </FieldNote>
+              <KaryawanTable
+                employees={shownEmployees}
+                referenceDate={referenceDate}
+                onDelete={hapus.ask}
+                onFiltersChange={setTableFilters}
+              />
             </CardContent>
           </Card>
         </>

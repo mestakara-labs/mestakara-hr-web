@@ -286,13 +286,16 @@ Pelatihan (Program, Realisasi), dan grup Lainnya (Analitik SDM, Laporan, Pengatu
     - Kelompok Usia, Pendidikan Terakhir;
     - Golongan & Masa Pensiun.
   - tabel kolom:
-    - No, Nama + avatar (klik = halaman detail; kolom `min-w-64` supaya nama tidak turun baris), Email, NIK, Status (filter), Jenis Kelamin (filter), Usia ("55 tahun 7 bulan", diurutkan per total bulan);
+    - No, Nama + avatar (klik = halaman detail; kolom `min-w-64` supaya nama tidak turun baris), Email, NIK, No. Registrasi,
+      **Status Kepegawaian** (badge Aktif/Belum Aktif/Nonaktif, filter corong, **bawaan hanya Aktif**), Status (filter), Jenis Kelamin (filter), Usia ("55 tahun 7 bulan", diurutkan per total bulan);
     - **Tanggal Pensiun** (+ "usia pensiun 55/56 tahun") dan **Status Pensiun** (badge, filter, urut dari yang paling dekat); hanya karyawan Tetap, lainnya "-";
     - Pendidikan (filter), Telepon, WhatsApp (kosong = sama dengan telepon), Aksi (Lihat Detail, Edit, Hapus).
   - **tidak ada kolom Jabatan**, karena jabatan ditampilkan di menu Jabatan Karyawan.
   - filter **"Pensiun pada periode"** di atas tabel (`RetirementFilter`, logika di `employee-retirement.ts`): Dari [Bulan][Tahun] s.d. [Bulan][Tahun];
     boleh hanya Dari atau hanya Sampai; periode terbalik memunculkan pesan dan tidak menyaring; menyaring data SEBELUM masuk tabel.
-  - filter **Status Kepegawaian** (Aktif / Belum Aktif / Nonaktif / Semua; **bawaan Aktif**), dijalankan sebelum filter pensiun.
+  - filter **Status Kepegawaian** ada DI KOLOM TABEL (ikon corong; bawaan Aktif lewat `defaultColumnFilters` di TableConfig;
+    "Reset filter & urutan" kembali ke Aktif). Dropdown lama di atas tabel dihapus. Halaman dikabari filter tabel lewat
+    `onColumnFiltersChange` (DataTable) -> `selectedActiveStatuses`; dipakai Ekspor Excel & kalimat jumlah filter pensiun.
     Kartu **Masa Kerja** di detail memakai `service_months` dari server (masa nonaktif tidak dihitung) + "nonaktif sejak".
     Kartu statistik hanya menghitung karyawan **Aktif**. Usia/pensiun karyawan draf tanpa tanggal lahir tampil "-".
   - tombol **Tambah Karyawan** membuka wizard Penambahan (`/dashboard/karyawan/create` dialihkan ke `/dashboard/penambahan/create`).
@@ -304,7 +307,7 @@ Pelatihan (Program, Realisasi), dan grup Lainnya (Analitik SDM, Laporan, Pengatu
     Biodata (nama, alamat, pendidikan, batih, Status Karyawan) tetap data terbaru (tidak ada riwayatnya).
     `useApiGet` punya `refreshing` ("Memuat data periode..." selama ganti periode; data lama tetap tampil).
   - tombol **Ekspor Excel** (`ExportKaryawanButton`, sejajar dengan filter Periode Data di sisi kanan; di HP turun ke bawah) mengunduh file `.xlsx` dari `GET /api/employees/export?period=…&active_status=…`
-    (ikut filter Status Kepegawaian yang dipilih; "Semua" = kosong) lewat `apiDownload` di `http-client.ts`.
+    (ikut filter Status Kepegawaian tabel: tepat satu status dicentang = status itu; selain itu = semua) lewat `apiDownload`.
     **Isi & format Excel disusun backend** (format sama persis dengan file "Database Karyawan - Unit Agrowisata (Saat Ini).xlsx":
     108 kolom A–DD, header 2 baris biru #215F9A / hijau #00B050, Tahoma 11, teks data HURUF BESAR kecuali email huruf kecil).
     Nama file dari backend (Content-Disposition): "Database Karyawan PTPN I Regional 2 Unit Agrowisata - {Bulan} {Tahun}.xlsx".
@@ -1204,3 +1207,18 @@ npx next build
     `Carbon::parse` memakai UTC sedangkan `DataPeriod::today()` WIB -> semua kartu dengan periode bawaan gagal; analitik Upah dengan
     Pisah per + filter butuh ±16 detik. Prompt perbaikan sudah diberikan; uji ulang periode bawaan, matriks, donat, tabel, dan
     Perlu Tindakan menunggu perbaikan itu.
+58. **Dashboard & Analitik — rapikan tampilan** (31 Oktober 2026). Backend zona waktu sudah diperbaiki; periode bawaan, matriks,
+    donat, tabel, dan Perlu Tindakan tampil. Pilihan Jumlah/Persen (matriks dashboard & "Tampilan" Analitik) dan "Lihat per"
+    Analitik jadi dropdown (`NativeSelect size="sm"`). Semua tabel dashboard & Analitik memakai `COMPACT_TABLE`
+    (components/shared/dashboard/table-style.ts, huruf 12px, baris rapat); satuan orang/jam/hari ditulis sekali (judul kolom atau
+    "Satuan: orang"), sel cukup angka (`formatCell`, `unitCaption` di lib/dashboard-format.ts). Donat: bertumpuk bila KARTU sempit
+    (container query `@md`), daftar berupa grid dengan nama dipotong "..." sehingga angka/persen tidak keluar kartu. Biaya Upah per
+    Kelompok & 10 Cost Center Terbesar kini selebar halaman (tidak berdampingan). Label sumbu grafik 11px. Diuji di 1526, 1280,
+    768, dan 375 px: tidak ada geser horizontal halaman (tabel lebar bergeser di dalam kartunya). **Catatan backend**: GET /dashboard
+    masih 7,7–15 detik; label rincian KPI Lembur dari backend memuat "(jam)" sehingga satuannya tampil dua kali.
+59. **Data Karyawan — filter Status Kepegawaian di tabel** (31 Oktober 2026). Kolom baru "Status Kepegawaian" (badge
+    `EmployeeActiveStatusBadge`, filter corong, bawaan Aktif) menggantikan dropdown di atas tabel. DataTable bersama mendapat
+    `defaultColumnFilters` (TableConfig; dipakai saat tampil pertama & Reset) dan prop `onColumnFiltersChange`. Kartu statistik
+    tetap hanya karyawan Aktif. Ringkasan Eksekutif Dasbor dicek: backend sudah menghitung karyawan Aktif saja (575; 22 Nonaktif
+    sejak 30 September 2026 tidak ikut), jadi tidak perlu perubahan. Diuji di Chrome: bawaan 575 Aktif, pilih Nonaktif = 22,
+    Reset kembali ke Aktif.

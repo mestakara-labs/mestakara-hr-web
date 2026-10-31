@@ -17,7 +17,8 @@ const PAYROLL_GROUP_BY = [
  *
  *   [Upah Diterima][Rata-rata per Karyawan][Porsi Lembur][Potongan]
  *   [Tren per bulan: gaji / lembur / tunjangan + garis diterima        ]
- *   [Biaya per Kelompok / Bidang / Cost Center / Segmen ][10 Cost Center terbesar]
+ *   [Biaya per Kelompok / Bidang / Cost Center / Segmen                 ]
+ *   [10 Cost Center terbesar                                            ]
  *   [Matriks Kelompok × komponen upah                                  ]
  */
 export function PayrollSection({ widgets }: { widgets: Record<string, DashboardWidget> }) {
@@ -54,25 +55,23 @@ export function PayrollSection({ widgets }: { widgets: Record<string, DashboardW
         render={(widget) => widget.type === "series" && <SeriesChart data={widget.data} layout="vertical" />}
       />
 
-      <div className="grid gap-4 xl:grid-cols-5">
-        <WidgetCard
-          className="xl:col-span-3"
-          widgetKey="payroll.by_group"
-          initial={widgets["payroll.by_group"]}
-          title="Biaya Upah per Kelompok"
-          description="Upah diterima, urut dari yang terbesar"
-          filterDimensions={ALL_DIMENSIONS}
-          groupByOptions={PAYROLL_GROUP_BY}
-          render={(widget) => widget.type === "series" && <SeriesChart data={widget.data} layout="horizontal" />}
-        />
-        <WidgetCard
-          className="xl:col-span-2"
-          widgetKey="payroll.top_cost_center"
-          initial={widgets["payroll.top_cost_center"]}
-          title="10 Cost Center Terbesar"
-          filterDimensions={ALL_DIMENSIONS}
-        />
-      </div>
+      <WidgetCard
+        widgetKey="payroll.by_group"
+        initial={widgets["payroll.by_group"]}
+        title="Biaya Upah per Kelompok"
+        description="Upah diterima, urut dari yang terbesar"
+        filterDimensions={ALL_DIMENSIONS}
+        groupByOptions={PAYROLL_GROUP_BY}
+        render={(widget) => widget.type === "series" && <SeriesChart data={widget.data} layout="horizontal" />}
+      />
+
+      <WidgetCard
+        widgetKey="payroll.top_cost_center"
+        initial={widgets["payroll.top_cost_center"]}
+        title="10 Cost Center Terbesar"
+        description="Upah diterima per cost center beserta porsinya"
+        filterDimensions={ALL_DIMENSIONS}
+      />
 
       <WidgetCard
         widgetKey="payroll.matrix"

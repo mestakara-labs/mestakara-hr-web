@@ -34,10 +34,10 @@ interface AnalitikControlsProps {
  *   Topik      [Karyawan] [Upah Casual & DW]
  *   Metrik     [Upah Diterima] [Gaji Upah] [Lembur] ...
  *   Periode    [📅 Jan – Okt 2026]
- *   Lihat per  [Sub Unit] [Bidang] [Segmen] ... [Bulan]
+ *   Lihat per  [Sub Unit ▾]
  *   Pisah per  [Tidak dipisah ▾]
  *   Filter     [Sub Unit: Malabar ✕] [Segmen: Wahana ✕] [+ Filter]
- *   Tampilan   [Jumlah] [Persen]   Grafik [Batang] [Garis] [Donat]   Urutkan [▾]  [Semua ▾]      [↺ Reset Semua]
+ *   Tampilan   [Jumlah ▾]   Grafik [Batang] [Garis] [Donat]   Urutkan [▾]  [Semua ▾]      [↺ Reset Semua]
  */
 export function AnalitikControls({ value, onChange }: AnalitikControlsProps) {
   const options = useFilterOptions();
@@ -102,20 +102,21 @@ export function AnalitikControls({ value, onChange }: AnalitikControlsProps) {
       </ControlRow>
 
       <ControlRow label="Lihat per">
-        <ToggleGroup
-          type="single"
-          variant="outline"
+        <NativeSelect
+          aria-label="Lihat per"
           size="sm"
           value={value.groupBy}
-          onValueChange={(next) => next && change({ groupBy: next, splitBy: value.splitBy === next ? "" : value.splitBy })}
-          className="flex-wrap justify-start"
+          onChange={(event) => {
+            const next = event.target.value;
+            change({ groupBy: next, splitBy: value.splitBy === next ? "" : value.splitBy });
+          }}
         >
           {ANALYTICS_DIMENSIONS.map((dimension) => (
-            <ToggleGroupItem key={dimension.value} value={dimension.value}>
+            <NativeSelectOption key={dimension.value} value={dimension.value}>
               {dimension.label}
-            </ToggleGroupItem>
+            </NativeSelectOption>
           ))}
-        </ToggleGroup>
+        </NativeSelect>
       </ControlRow>
 
       <ControlRow label="Pisah per">
@@ -153,16 +154,15 @@ export function AnalitikControls({ value, onChange }: AnalitikControlsProps) {
 
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
         <ControlRow label="Tampilan">
-          <ToggleGroup
-            type="single"
-            variant="outline"
+          <NativeSelect
+            aria-label="Tampilan"
             size="sm"
             value={value.mode}
-            onValueChange={(next) => next && change({ mode: next as AnalyticsState["mode"] })}
+            onChange={(event) => change({ mode: event.target.value as AnalyticsState["mode"] })}
           >
-            <ToggleGroupItem value="value">Jumlah</ToggleGroupItem>
-            <ToggleGroupItem value="share">Persen</ToggleGroupItem>
-          </ToggleGroup>
+            <NativeSelectOption value="value">Jumlah</NativeSelectOption>
+            <NativeSelectOption value="share">Persen</NativeSelectOption>
+          </NativeSelect>
         </ControlRow>
         <ControlRow label="Grafik">
           <ToggleGroup
