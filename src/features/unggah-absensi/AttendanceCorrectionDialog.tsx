@@ -7,7 +7,7 @@ import { toast } from "@mestakara/ui/sonner";
 import { FormDialog } from "@/components/shared/FormDialog";
 import { SelectField, TextAreaField } from "@/components/shared/FormFields";
 import { useFormSubmit } from "@/hooks/useFormSubmit";
-import { ATTENDANCE_CODES, SOURCE_LABELS } from "@/lib/attendance-rules";
+import { SOURCE_LABELS, type AttendanceCodeInfo } from "@/lib/attendance-rules";
 import { formatDate, formatDayName } from "@/lib/date";
 import { apiPut } from "@/lib/http-client";
 import { requireText } from "@/lib/validation";
@@ -23,6 +23,8 @@ export interface CorrectionTarget {
 interface AttendanceCorrectionDialogProps {
   /** null = dialog tertutup */
   target: CorrectionTarget | null;
+  /** Kode yang boleh dipilih (karyawan Daily Worker: tanpa DW) */
+  codes: AttendanceCodeInfo[];
   onClose: () => void;
   onSaved: () => void;
 }
@@ -52,7 +54,12 @@ export function AttendanceCorrectionDialog(props: AttendanceCorrectionDialogProp
   return <CorrectionDialogContent key={props.target.day.date} {...props} target={props.target} />;
 }
 
-function CorrectionDialogContent({ target, onClose, onSaved }: AttendanceCorrectionDialogProps & { target: CorrectionTarget }) {
+function CorrectionDialogContent({
+  target,
+  codes,
+  onClose,
+  onSaved,
+}: AttendanceCorrectionDialogProps & { target: CorrectionTarget }) {
   const { day } = target;
   const [values, setValues] = useState<CorrectionFormValues>({ status_code: day.status_code ?? "", reason: "" });
 
@@ -103,7 +110,7 @@ function CorrectionDialogContent({ target, onClose, onSaved }: AttendanceCorrect
       <SelectField
         id="status_code"
         label="Kode Baru"
-        options={ATTENDANCE_CODES.map(({ code, label }) => ({ value: code, label: `${code} — ${label}` }))}
+        options={codes.map(({ code, label }) => ({ value: code, label: `${code} — ${label}` }))}
         emptyLabel="Kosong (tidak masuk)"
         value={values.status_code}
         onChange={(value) => changeValue("status_code", value)}

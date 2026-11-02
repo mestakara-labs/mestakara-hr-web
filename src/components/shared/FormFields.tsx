@@ -192,8 +192,8 @@ export function SearchMultiSelectField(
 }
 
 /** Pilihan tanggal (Date Picker @mestakara/ui). Nilainya teks "YYYY-MM-DD". */
-export function DateField(props: BaseFieldProps & { disableFuture?: boolean; fromYear?: number }) {
-  const { id, value, onChange, error, disabled, placeholder, disableFuture, fromYear } = props;
+export function DateField(props: BaseFieldProps & { disableFuture?: boolean; fromYear?: number; minDate?: string }) {
+  const { id, value, onChange, error, disabled, placeholder, disableFuture, fromYear, minDate } = props;
 
   return (
     <FieldFrame {...props}>
@@ -206,6 +206,7 @@ export function DateField(props: BaseFieldProps & { disableFuture?: boolean; fro
         placeholder={placeholder}
         disableFuture={disableFuture}
         fromYear={fromYear}
+        minDate={minDate}
       />
     </FieldFrame>
   );

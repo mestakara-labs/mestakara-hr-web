@@ -8,11 +8,12 @@ import { FormDialog } from "@/components/shared/FormDialog";
 import { DateField, SearchSelectField, TextAreaField, TextField } from "@/components/shared/FormFields";
 import { useApiGet } from "@/hooks/useApiGet";
 import { useFormSubmit } from "@/hooks/useFormSubmit";
-import { SOURCE_LABELS } from "@/lib/attendance-rules";
+import { SOURCE_LABELS, type EmployeeCategoryConfig } from "@/lib/attendance-rules";
 import { apiPost, apiPut } from "@/lib/http-client";
 import { requireSelection, requireText } from "@/lib/validation";
 import type {
   AttendanceSummaryRow,
+  EmployeeCategory,
   OvertimeEntryChangePayload,
   OvertimeEntryCreatePayload,
   OvertimeEntryRow,
@@ -25,6 +26,8 @@ interface OvertimeEntryDialogProps {
   /** null = dialog tertutup */
   target: OvertimeEntryTarget | null;
   overtimeType: "reguler" | "dw";
+  /** Kategori karyawan yang dibuka; pilihan karyawan saat Tambah hanya kategori ini */
+  category: EmployeeCategoryConfig;
   /** Judul jenis lembur, mis. "Lembur DW" */
   title: string;
   /** Periode "YYYY-MM"; tanggal harus di dalam periode ini */
@@ -67,6 +70,7 @@ export function OvertimeEntryDialog(props: OvertimeEntryDialogProps) {
 function OvertimeEntryDialogContent({
   target,
   overtimeType,
+  category,
   title,
   period,
   periodLabel,
@@ -148,6 +152,7 @@ function OvertimeEntryDialogContent({
       {!row && (
         <EmployeeField
           period={period}
+          category={category.value}
           value={values.employee_id}
           onChange={(value) => changeValue("employee_id", value)}
           error={errors.employee_id}
@@ -212,23 +217,27 @@ function OvertimeEntryDialogContent({
 }
 
 /**
- * Pilihan karyawan saat Tambah: karyawan Casual & DW yang aktif pada periode itu
- * (sama dengan isi rekap daftar hadir). Diambil hanya saat dialog Tambah dibuka.
+ * Pilihan karyawan saat Tambah: karyawan kategori yang dibuka (Casual / Daily Worker) yang aktif pada periode itu
+ * (sama dengan isi rekap daftar hadir kategori itu). Diambil hanya saat dialog Tambah dibuka.
  */
 function EmployeeField({
   period,
+  category,
   value,
   onChange,
   error,
   disabled,
 }: {
   period: string;
+  category: EmployeeCategory;
   value: string;
   onChange: (value: string) => void;
   error?: string;
   disabled: boolean;
 }) {
-  const { data: employees, loading } = useApiGet<AttendanceSummaryRow[]>(`/api/attendance-summaries?period=${period}`);
+  const { data: employees, loading } = useApiGet<AttendanceSummaryRow[]>(
+    `/api/attendance-summaries?${new URLSearchParams({ period, employee_category: category })}`,
+  );
   const options = (employees ?? []).map((employee) => ({
     value: employee.id,
     label: employee.name,

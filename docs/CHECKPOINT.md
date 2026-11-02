@@ -526,8 +526,11 @@ Tiga lapis data: **Shift** (jam) → **Pola Kerja** (slot × hari siklus) → **
 - Semua endpoint upah **tidak punya mock**: mode mock membalas 501 (`backendOnly()` di `mock-response.ts`).
 
 **Tahap 2 — Unggah Absensi, front end** (`features/unggah-absensi/`, aturan `lib/attendance-rules.ts`, tipe `types/api/attendance.ts`):
-- Satu halaman, pilihan Periode di atas, lalu **Tab Bar**: Daftar Hadir · Lembur Reguler · Lembur DW. Tab yang dibuka disimpan di
-  alamat (`?tab=daftar-hadir|lembur-reguler|lembur-dw`, halaman dibungkus Suspense karena `useSearchParams`). Badge tab: ✓ sudah
+- Satu halaman, pilihan Periode di atas, lalu **tab besar full width per kategori** (`EMPLOYEE_CATEGORIES` di attendance-rules):
+  **Karyawan Casual** (tab kecil Daftar Hadir · Lembur Reguler · Lembur DW) dan **Karyawan Daily Worker** (Daftar Hadir tanpa
+  kode DW & tanpa batas hari · Lembur Reguler; TIDAK ada Lembur DW). Tab disimpan di alamat (`?kategori=casual|daily-worker&tab=daftar-hadir|lembur-reguler|
+  lembur-dw`; alamat lama tanpa kategori = Casual; halaman dibungkus Suspense karena `useSearchParams`). Semua permintaan absensi
+  membawa `employee_category` (status unggahan kedua kategori diambil sekaligus untuk badge tab besar). Badge tab: ✓ sudah
   diunggah (lembur + jumlah baris) · ● Belum · ⚠ konflik. Status periode Draf / Dikunci (dikunci = unggah & koreksi mati).
 - Setiap tab: `ImportSectionCard` (keterangan, terakhir diunggah, Riwayat → `ImportHistorySheet`, Unduh Template, Unggah File →
   `AttendanceImportDialog`: periksa → pratinjau baru/diubah/dihapus/tetap + salah/peringatan/konflik → simpan; salah menghalangi).
@@ -576,9 +579,14 @@ Tiga lapis data: **Shift** (jam) → **Pola Kerja** (slot × hari siklus) → **
   filter rincian), rincian (`PayrollTable`: centang, Rincian Upah `PayrollDetailSheet`, Ubah Potongan `DeductionDialog` satu /
   sekaligus — isian kosong = tidak diubah), **Salin Potongan Bulan Lalu** (`CopyDeductionsDialog`: pratinjau → salin, hanya yang
   potongannya masih 0), riwayat kunci.
-- Ekspor (`PayrollExportDialog`): Daftar Upah & SPKL (Reguler/DW), menurut pengelompokan halaman, semua kelompok (Daftar Upah: + REKAP
-  & PAYROLL) atau satu, format **Excel atau PDF**, susunan mengikuti file DU & Daftar Lembur lama; draf = bertanda DRAF; SPKL hanya
-  karyawan yang dicentang kalau ada centang.
+- **Satu tombol Ekspor** (`PayrollExportDialog`, keputusan 31 Okt 2026): Kategori (Casual / Daily Worker) · Jenis Dokumen
+  (`PAYROLL_DOCUMENTS`: Daftar Upah · Payroll · SPKL Lembur Reguler + DW · SPKL Lembur Reguler · SPKL Lembur DW; yang memuat DW
+  `casualOnly` -> Daily Worker hanya Daftar Upah, Payroll, SPKL Lembur Reguler)
+  · Kelompok (centang banyak menurut pengelompokan halaman, jumlah karyawan per kelompok dihitung dari baris halaman lewat
+  `rowInDocument`; kelompok kosong tidak bisa dicentang) · Format Excel/PDF. Setiap file = REKAP kelompok terpilih (tanda tangan
+  Umum) lalu rincian per karyawan per kelompok (Excel: satu sheet per kelompok). SPKL Reguler + DW = satu blok per karyawan berisi
+  semua tanggal; kolom **Jenis** hanya di Excel (rekap: baris Reguler/DW per kelompok; rincian: per baris lembur). Draf = bertanda
+  DRAF; SPKL hanya karyawan yang dicentang kalau ada centang (tombol "SPKL yang Dicentang").
 - Kunci periode membekukan angka (kedua pengelompokan) + penanda tangan; Tahap 2/3 & potongan ditolak selama dikunci.
 
 ---
@@ -726,11 +734,11 @@ Tiga lapis data: **Shift** (jam) → **Pola Kerja** (slot × hari siklus) → **
 | `/api/wage-schemes/template` | GET `?period=` | File Excel template data upah (`forwardFile`) |
 | `/api/wage-schemes/import/preview`, `/import` | POST | Periksa / simpan file Excel data upah (multipart `file`) |
 | `/api/employees/[id]/wage-schemes`, `/bank-accounts`, `/cost-centers` | GET POST | Riwayat & tambah catatan skema / rekening / cost center |
-| `/api/attendance-imports` | GET `?period=` POST | Status unggahan 3 jenis + riwayat / simpan unggahan (multipart `file`, `period`, `type`) (mock = 501) |
-| `/api/attendance-imports/template` | GET `?period=&type=` | File Excel template absensi/lembur (`forwardFile`) |
+| `/api/attendance-imports` | GET `?period=&employee_category=` POST | Status unggahan per kategori + riwayat / simpan unggahan (multipart `file`, `period`, `type`, `employee_category`) (mock = 501) |
+| `/api/attendance-imports/template` | GET `?period=&type=&employee_category=` | File Excel template absensi/lembur per kategori (`forwardFile`) |
 | `/api/attendance-imports/preview` | POST | Periksa file absensi tanpa menyimpan |
-| `/api/attendance-summaries` | GET `?period=` | Rekap daftar hadir per karyawan Casual & DW |
-| `/api/overtime-entries` | GET `?period=&type=` POST | Daftar lembur reguler / DW / tambah baris manual (alasan wajib) |
+| `/api/attendance-summaries` | GET `?period=&employee_category=casual\|daily_worker` | Rekap daftar hadir per karyawan satu kategori |
+| `/api/overtime-entries` | GET `?period=&type=&employee_category=` POST | Daftar lembur reguler / DW per kategori / tambah baris manual (alasan wajib) |
 | `/api/overtime-entries/[id]` | PUT DELETE `?reason=` | Ubah (jadi Manual) / hapus satu baris lembur (alasan wajib; DELETE lewat query) |
 | `/api/dw-overtime-targets` | GET `?period=` | Target vs Upah Lembur DW per karyawan (→ `/overtime-dw/targets`) |
 | `/api/dw-overtime-recommendations/preview` | POST | Hitung rekomendasi Lembur DW tanpa menyimpan (`period`, `employee_ids?`) |
@@ -742,8 +750,7 @@ Tiga lapis data: **Shift** (jam) → **Pola Kerja** (slot × hari siklus) → **
 | `/api/payroll/deductions` | PUT | Ubah potongan satu / sekaligus |
 | `/api/payroll/deductions/copy-previous` | POST `{period, save}` | Salin potongan bulan lalu (save false = pratinjau) |
 | `/api/payroll/lock`, `/unlock` | POST | Kunci / buka kunci periode (buka: alasan wajib) |
-| `/api/payroll/export` | GET `?period=&group_by=&group_key=&format=xlsx\|pdf` | File Daftar Upah (`forwardFile`) |
-| `/api/payroll/spkl` | GET `?period=&type=reguler\|dw&group_by=&group_key=&format=&employee_ids=` | File SPKL (`forwardFile`) |
+| `/api/payroll/export` | GET `?period=&group_by=&employee_category=&document=&group_keys=&format=xlsx\|pdf&employee_ids=&sign_date=&show_draft=` | File Daftar Upah / Payroll / SPKL (`forwardFile`); `/api/payroll/spkl` dihapus |
 | `/api/employees/[id]/attendance` | GET `?period=` PUT | Detail absensi (kode per tanggal, lembur, jejak) / koreksi manual (alasan wajib) |
 | `/api/work-groups`, `/[id]` | GET POST / GET PUT DELETE | Regu kerja (+ anggota di resource) |
 | `/api/work-groups/[id]/members` | GET | Anggota (tambah anggota lewat POST/PUT `/api/work-groups` dengan `members`) |
@@ -1222,3 +1229,37 @@ npx next build
     tetap hanya karyawan Aktif. Ringkasan Eksekutif Dasbor dicek: backend sudah menghitung karyawan Aktif saja (575; 22 Nonaktif
     sejak 30 September 2026 tidak ikut), jadi tidak perlu perubahan. Diuji di Chrome: bawaan 575 Aktif, pilih Nonaktif = 22,
     Reset kembali ke Aktif.
+60. **Absensi & ekspor per kategori karyawan** (31 Oktober 2026). Unggah Absensi: tab besar Karyawan Casual / Karyawan Daily
+    Worker (lihat 6.13 Tahap 2); Daily Worker hanya Daftar Hadir, kode DW salah, tanpa batas hari, tanpa lembur; unggah ulang hanya
+    mengganti data kategori itu; Tambah Lembur hanya Casual. Daftar Upah: satu tombol Ekspor dengan Kategori, Jenis Dokumen (Daftar
+    Upah, Payroll, SPKL Reguler + DW, SPKL Reguler, SPKL DW), centang Kelompok, Format (lihat 6.13 Tahap 4). Front end selesai &
+    tampilannya dicek; **menunggu backend** (`employee_category`, satu endpoint ekspor `document`/`group_keys`, `/payroll/spkl`
+    dihapus). Sebelum backend selesai, tab Daily Worker masih berisi semua karyawan dan ekspor masih memakai susunan lama.
+61. **Revisi: Daily Worker juga punya Lembur Reguler** (31 Oktober 2026). Tab Karyawan Daily Worker = Daftar Hadir (tanpa kode DW)
+    + Lembur Reguler; Lembur DW tetap hanya Casual (`hasDwOvertime`). Daftar lembur & Tambah Lembur per kategori
+    (`/api/overtime-entries?...&employee_category=`). Rekap Daily Worker punya kolom Lembur Reguler, tanpa DW & Lembur DW. Ekspor
+    Daily Worker: Daftar Upah, Payroll, SPKL Lembur Reguler. Diuji tampilannya di Chrome; menunggu backend (prompt revisi).
+62. **Uji absensi & ekspor per kategori dengan backend** (31 Oktober 2026, data dummy lalu DIHAPUS). Kontrak cocok: status/rekap/
+    daftar lembur per `employee_category` (Casual 323, Daily Worker 15 karyawan Okt 2026), kategori salah/kosong 422, Lembur DW &
+    kode DW untuk Daily Worker 422, template per kategori (Lembur DW Daily Worker 422), pemeriksaan unggahan menolak karyawan
+    kategori lain. Ekspor: 10 kombinasi kategori × dokumen (SPKL yang memuat DW + Daily Worker = 422), nama file & sheet (REKAP +
+    satu sheet per kelompok), `group_keys`, `employee_ids`, SPKL Reguler + DW (Excel: kolom Jenis di rekap & rincian, JUMLAH karyawan
+    unik). PDF diuji langsung ke backend (200, file valid); di browser fetch PDF bisa 204 kalau download manager (IDM) mencegat.
+    **Catatan backend**: template Lembur Reguler/DW ikut memuat baris MANUAL, sehingga template yang diunggah ulang apa adanya
+    ditolak "Tumpang tindih dengan Lembur ... manual tersimpan".
+63. **Ekspor: tanggal tanda tangan & sakelar DRAF** (1 November 2026). Dialog Ekspor punya bagian "Pengaturan Dokumen":
+    **Tanggal Tanda Tangan** (`DateField` + tombol "Bawaan"; bawaan = tanggal kunci WIB kalau dikunci, selain itu hari ini WIB,
+    `defaultSignDate`; paling awal tanggal 1 bulan periode, `firstSignDate`; boleh diubah walau periode dikunci) dan sakelar
+    **Tulisan DRAF** (hanya selama periode belum dikunci, bawaan ON; dikunci = tidak pernah DRAF). Dikirim sebagai `sign_date` &
+    `show_draft`. `DatePicker`/`DateField` mendapat `minDate`. **Diuji dengan backend** (Okt 2026, draf): tanggal kustom tercetak
+    di rekap & setiap kelompok (Daftar Upah, Payroll, SPKL), show_draft=0 menghapus DRAF di isi & nama file (SPKL menulisnya sebagai
+    "BULAN : ... (DRAF)"), tanggal sebelum tanggal 1 periode / tidak valid / show_draft selain 1|0 = 422. Periode dikunci belum diuji
+    (belum ada periode dikunci; tidak mengunci periode sungguhan hanya untuk uji).
+64. **Unggah Absensi: kartu ringkasan biaya per tab** (1 November 2026). Angka upah diambil dari Daftar Upah (`/api/payroll?period=`,
+    sekali per periode di `UnggahAbsensiPage`, dimuat ulang setelah unggah/koreksi/lembur berubah; disaring per kategori lewat
+    `payrollRowsOf`), hitungan di `lib/attendance-summary.ts`. Daftar Hadir (`AttendanceCostCards`): Karyawan (Harian/Flat, tanpa
+    skema -> tautan Skema Upah) · Hari Kerja K (rata-rata, K di atas batas) · Upah Hari Kerja · **Upah per Sub Unit / Afdeling**
+    (daftar + batang porsi, jumlahnya = Upah Hari Kerja). Lembur Reguler (`OvertimeCostCards`): Total Jam · Upah Lembur Reguler ·
+    Porsi terhadap Upah Hari Kerja · Biaya Lembur Terbesar. Lembur DW (kartu di `DwTargetSection`): Total Jam · Upah Lembur DW ·
+    Target · Selisih. Kalimat "N baris · N karyawan · N jam" di atas tabel lembur dihapus. Tab besar kategori boleh turun baris di HP.
+    Dicek di Chrome (Okt 2026: angka = Daftar Upah; 375 px tanpa geser horizontal).

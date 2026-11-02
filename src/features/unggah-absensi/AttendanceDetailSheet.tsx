@@ -8,7 +8,13 @@ import { cn } from "cn";
 
 import { PageError, PageLoading } from "@/components/shared/PageState";
 import { useApiGet } from "@/hooks/useApiGet";
-import { ATTENDANCE_CODES, findAttendanceCode, formatMinutes, SOURCE_LABELS } from "@/lib/attendance-rules";
+import {
+  findAttendanceCode,
+  formatMinutes,
+  SOURCE_LABELS,
+  type AttendanceCodeInfo,
+  type EmployeeCategoryConfig,
+} from "@/lib/attendance-rules";
 import { formatDate, formatDateTime, isoWeekday } from "@/lib/date";
 import type {
   AttendanceChangeDetail,
@@ -22,6 +28,8 @@ import { AttendanceCorrectionDialog, type CorrectionTarget } from "./AttendanceC
 interface AttendanceDetailSheetProps {
   /** Karyawan yang dilihat. null = panel tertutup. */
   target: AttendanceSummaryRow | null;
+  /** Kategori karyawan (kode yang boleh dipakai & ada tidaknya lembur) */
+  category: EmployeeCategoryConfig;
   /** Periode "YYYY-MM" dan namanya */
   period: string;
   periodLabel: string;
@@ -43,7 +51,15 @@ interface AttendanceDetailSheetProps {
  *   Lembur: Tanggal | Jenis | Jam | Durasi | Uraian | Sumber
  *   Jejak perubahan: 6 Okt · K → S · Manual · "Surat dokter" · Admin SDM   (lihat describeChange)
  */
-export function AttendanceDetailSheet({ target, period, periodLabel, locked, onClose, onChanged }: AttendanceDetailSheetProps) {
+export function AttendanceDetailSheet({
+  target,
+  category,
+  period,
+  periodLabel,
+  locked,
+  onClose,
+  onChanged,
+}: AttendanceDetailSheetProps) {
   return (
     <Sheet open={target !== null} onOpenChange={(open) => !open && onClose()}>
       <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-2xl">
@@ -57,7 +73,14 @@ export function AttendanceDetailSheet({ target, period, periodLabel, locked, onC
             </SheetHeader>
 
             {/* `key` = data diambil ulang setiap kali panel dibuka untuk karyawan / periode lain. */}
-            <DetailContent key={`${target.id}-${period}`} target={target} period={period} locked={locked} onChanged={onChanged} />
+            <DetailContent
+              key={`${target.id}-${period}`}
+              target={target}
+              category={category}
+              period={period}
+              locked={locked}
+              onChanged={onChanged}
+            />
           </>
         )}
       </SheetContent>
@@ -67,11 +90,13 @@ export function AttendanceDetailSheet({ target, period, periodLabel, locked, onC
 
 function DetailContent({
   target,
+  category,
   period,
   locked,
   onChanged,
 }: {
   target: AttendanceSummaryRow;
+  category: EmployeeCategoryConfig;
   period: string;
   locked: boolean;
   onChanged: () => void;
@@ -94,7 +119,7 @@ function DetailContent({
     <div className="flex flex-col gap-6 px-4 pb-6">
       <section className="flex flex-col gap-3">
         <AttendanceCalendar days={data.days} locked={locked} onSelect={openCorrection} />
-        <Legend />
+        <Legend codes={category.codes} />
         <p className="typo-body-s text-fg-tertiary">
           {locked
             ? "Periode sudah dikunci; absensi tidak bisa dikoreksi."
@@ -163,6 +188,7 @@ function DetailContent({
 
       <AttendanceCorrectionDialog
         target={correction}
+        codes={category.codes}
         onClose={() => setCorrection(null)}
         onSaved={() => {
           reload();
@@ -240,10 +266,10 @@ function AttendanceCalendar({
 }
 
 /** Keterangan kode & tanda sumber di bawah kalender. */
-function Legend() {
+function Legend({ codes }: { codes: AttendanceCodeInfo[] }) {
   return (
     <div className="flex flex-wrap gap-2 typo-body-s text-fg-secondary">
-      {ATTENDANCE_CODES.map(({ code, label, className }) => (
+      {codes.map(({ code, label, className }) => (
         <span key={code} className={cn("rounded px-1.5 py-0.5", className)}>
           {code} {label}
         </span>

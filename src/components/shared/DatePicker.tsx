@@ -20,6 +20,8 @@ interface DatePickerProps {
   fromYear?: number;
   /** Tidak boleh memilih tanggal setelah hari ini (mis. tanggal lahir) */
   disableFuture?: boolean;
+  /** Tanggal paling awal yang boleh dipilih, "YYYY-MM-DD" (mis. tanggal 1 bulan periode) */
+  minDate?: string;
 }
 
 /**
@@ -38,10 +40,13 @@ export function DatePicker({
   disabled = false,
   fromYear = 1950,
   disableFuture = false,
+  minDate,
 }: DatePickerProps) {
   const [open, setOpen] = useState(false);
   const selectedDate = value ? parseDate(value) : undefined;
   const today = new Date();
+  // Tanggal yang tidak bisa diklik: setelah hari ini (disableFuture) dan/atau sebelum minDate.
+  const disabledDays = [...(disableFuture ? [{ after: today }] : []), ...(minDate ? [{ before: parseDate(minDate) }] : [])];
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -71,7 +76,7 @@ export function DatePicker({
           captionLayout="dropdown"
           startMonth={new Date(fromYear, 0)}
           endMonth={new Date(today.getFullYear() + 5, 11)}
-          disabled={disableFuture ? { after: today } : undefined}
+          disabled={disabledDays.length > 0 ? disabledDays : undefined}
         />
       </PopoverContent>
     </Popover>

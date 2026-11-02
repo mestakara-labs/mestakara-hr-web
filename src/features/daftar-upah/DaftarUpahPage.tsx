@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { Copy, FileSpreadsheet, FileText, HandCoins, Lock, LockOpen, Scissors, Users, Wallet, X } from "lucide-react";
+import { Copy, Download, FileText, HandCoins, Lock, LockOpen, Scissors, Users, Wallet, X } from "lucide-react";
 import { Alert, AlertDescription } from "@mestakara/ui/alert";
 import { Badge } from "@mestakara/ui/badge";
 import { Button } from "@mestakara/ui/button";
@@ -14,7 +14,7 @@ import { PageError, PageLoading } from "@/components/shared/PageState";
 import { PeriodFilter } from "@/features/karyawan/PeriodFilter";
 import { useApiGet } from "@/hooks/useApiGet";
 import { formatDateTime } from "@/lib/date";
-import { PAYROLL_GROUP_BY } from "@/lib/payroll-rules";
+import { PAYROLL_GROUP_BY, type PayrollDocument } from "@/lib/payroll-rules";
 import { currentPeriod, periodLabel, toPeriodParam, type DataPeriod } from "@/lib/period-rules";
 import { FIRST_WAGE_YEAR, formatRupiah } from "@/lib/wage-rules";
 import type { PayrollGroupBy, PayrollResource, PayrollRow } from "@/types/api/payroll";
@@ -23,7 +23,7 @@ import { CopyDeductionsDialog } from "./CopyDeductionsDialog";
 import { DeductionDialog } from "./DeductionDialog";
 import { LockPeriodDialog, UnlockPeriodDialog } from "./LockPeriodDialogs";
 import { PayrollDetailSheet } from "./PayrollDetailSheet";
-import { PayrollExportDialog, type ExportDocument } from "./PayrollExportDialog";
+import { PayrollExportDialog } from "./PayrollExportDialog";
 import { PayrollGroupTable } from "./PayrollGroupTable";
 import { PayrollReadinessCard } from "./PayrollReadinessCard";
 import { PayrollTable } from "./PayrollTable";
@@ -31,7 +31,7 @@ import { PayrollTable } from "./PayrollTable";
 /**
  * Halaman DAFTAR UPAH karyawan Casual & Daily Worker:
  *
- *   Daftar Upah                                              [▦ Ekspor Daftar Upah] [📄 SPKL]
+ *   Daftar Upah                                                              [⬇ Ekspor]
  *   📅 Periode [Oktober ▾][2026 ▾]                        Status: [Draf]  [🔒 Kunci Periode]
  *   Kesiapan (peringatan + tautan)            — atau info "Dikunci ... oleh ..." kalau dikunci
  *   [Karyawan] [Upah & Tunjangan] [Potongan] [Upah Diterima]
@@ -42,7 +42,8 @@ import { PayrollTable } from "./PayrollTable";
  * Alurnya:
  *   1. Pilih periode & pengelompokan -> /api/payroll?period=YYYY-MM&group_by=... (dihitung backend)
  *   2. Bereskan Kesiapan, isi potongan (per karyawan, sekaligus, atau salin bulan lalu)
- *   3. Ekspor Daftar Upah / SPKL (Excel atau PDF) -> Kunci Periode (angka & penanda tangan dibekukan)
+ *   3. Ekspor (kategori Casual / Daily Worker; Daftar Upah, Payroll, atau SPKL; kelompok terpilih; Excel atau PDF)
+ *      -> Kunci Periode (angka & penanda tangan dibekukan)
  */
 export function DaftarUpahPage() {
   const [period, setPeriod] = useState<DataPeriod>(() => currentPeriod());
@@ -63,7 +64,8 @@ export function DaftarUpahPage() {
   const [isCopying, setIsCopying] = useState(false);
   const [isLocking, setIsLocking] = useState(false);
   const [isUnlocking, setIsUnlocking] = useState(false);
-  const [exportDocument, setExportDocument] = useState<ExportDocument | null>(null);
+  /** Jenis dokumen yang terpilih saat dialog Ekspor dibuka; null = tertutup */
+  const [exportDocument, setExportDocument] = useState<PayrollDocument | null>(null);
 
   // useMemo/useCallback: diteruskan ke konfigurasi kolom tabel yang dibuat ulang hanya kalau ini berubah.
   const groupNames = useMemo(() => new Map((payroll?.groups ?? []).map((group) => [group.key, group.name])), [payroll]);
@@ -93,16 +95,10 @@ export function DaftarUpahPage() {
         title="Daftar Upah"
         description="Upah karyawan Casual & Daily Worker per periode: gaji, lembur, tunjangan, potongan, dan upah diterima. Dasar ekspor Daftar Upah & SPKL."
         action={
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <Button variant="outline" onClick={() => setExportDocument("daftar-upah")} disabled={!payroll}>
-              <FileSpreadsheet />
-              Ekspor Daftar Upah
-            </Button>
-            <Button variant="outline" onClick={() => setExportDocument("spkl")} disabled={!payroll}>
-              <FileText />
-              SPKL
-            </Button>
-          </div>
+          <Button variant="outline" onClick={() => setExportDocument("daftar_upah")} disabled={!payroll}>
+            <Download />
+            Ekspor
+          </Button>
         }
       />
 
@@ -223,7 +219,7 @@ export function DaftarUpahPage() {
                     <Button size="sm" variant="ghost" onClick={() => setSelectedIds([])}>
                       Batal Pilih
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => setExportDocument("spkl")}>
+                    <Button size="sm" variant="outline" onClick={() => setExportDocument("spkl_all")}>
                       <FileText />
                       SPKL yang Dicentang
                     </Button>
@@ -287,13 +283,15 @@ export function DaftarUpahPage() {
             onSaved={afterSaved}
           />
           <PayrollExportDialog
-            document={exportDocument}
+            initialDocument={exportDocument}
             period={periodParam}
             periodLabel={label}
             groupBy={groupBy}
             groups={payroll.groups}
+            rows={payroll.rows}
             isDraft={!locked}
-            selectedEmployeeIds={exportDocument === "spkl" ? selectedIds : []}
+            lockedAt={payroll.locked_at}
+            selectedEmployeeIds={selectedIds}
             onClose={() => setExportDocument(null)}
           />
         </>

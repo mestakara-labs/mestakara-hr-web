@@ -8,8 +8,14 @@
  * Arti kode & jenis unggahan ada di src/lib/attendance-rules.ts.
  */
 
-/** Jenis unggahan = tiga tab di halaman Unggah Absensi. */
+/** Jenis unggahan = tab kecil di halaman Unggah Absensi (lembur hanya untuk Casual). */
 export type AttendanceImportType = "daftar_hadir" | "lembur_reguler" | "lembur_dw";
+
+/**
+ * Kategori karyawan = tab besar di halaman Unggah Absensi; dikirim sebagai `employee_category` ke status unggahan,
+ * template, periksa/simpan unggahan, dan rekap daftar hadir.
+ */
+export type EmployeeCategory = "casual" | "daily_worker";
 
 /** Asal data satu tanggal / satu lembur. */
 export type AttendanceSource = "import_excel" | "mobile" | "manual" | "rekomendasi_sistem";

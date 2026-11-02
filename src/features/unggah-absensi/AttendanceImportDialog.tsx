@@ -6,12 +6,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 
 import { ExcelImportDialog, formatColumnMessage } from "@/components/shared/ExcelImportDialog";
 import { formatDate } from "@/lib/date";
-import { SOURCE_LABELS, type AttendanceImportConfig } from "@/lib/attendance-rules";
+import { SOURCE_LABELS, type AttendanceImportConfig, type EmployeeCategoryConfig } from "@/lib/attendance-rules";
 import type { AttendanceImportPreview, AttendanceImportRow } from "@/types/api/attendance";
 
 interface AttendanceImportDialogProps {
   /** Jenis unggahan. null = dialog tertutup. */
   config: AttendanceImportConfig | null;
+  /** Kategori karyawan yang dibuka; unggahan hanya mengganti data kategori ini */
+  category: EmployeeCategoryConfig;
   /** Periode "YYYY-MM" */
   period: string;
   /** Nama periode untuk judul, mis. "Oktober 2026" */
@@ -32,16 +34,16 @@ interface AttendanceImportDialogProps {
  *
  * Simpan tidak bisa diklik selama masih ada baris salah. Peringatan & konflik tidak menghalangi.
  */
-export function AttendanceImportDialog({ config, period, periodLabel, onClose, onSaved }: AttendanceImportDialogProps) {
+export function AttendanceImportDialog({ config, category, period, periodLabel, onClose, onSaved }: AttendanceImportDialogProps) {
   return (
     <ExcelImportDialog<AttendanceImportPreview>
       open={config !== null}
-      title={`Unggah ${config?.title ?? ""} — ${periodLabel}`}
+      title={`Unggah ${config?.title ?? ""} ${category.label} — ${periodLabel}`}
       // Lembur DW: unggahan juga menggantikan hasil Hitung Rekomendasi.
-      description={`Pakai file dari tombol "Unduh Template". Unggahan ini MENGGANTIKAN data ${config?.title ?? ""} periode ini yang berasal dari Excel${config?.type === "lembur_dw" ? " dan hasil rekomendasi" : ""}; data dari aplikasi mobile & koreksi manual tidak ditimpa.`}
+      description={`Pakai file dari tombol "Unduh Template". Unggahan ini MENGGANTIKAN data ${config?.title ?? ""} ${category.label} periode ini yang berasal dari Excel${config?.type === "lembur_dw" ? " dan hasil rekomendasi" : ""}; data dari aplikasi mobile & koreksi manual tidak ditimpa.`}
       previewUrl="/api/attendance-imports/preview"
       saveUrl="/api/attendance-imports"
-      extraFields={{ period, type: config?.type ?? "" }}
+      extraFields={{ period, type: config?.type ?? "", employee_category: category.value }}
       canSave={(preview) => preview.summary.invalid === 0 && preview.summary.total_rows > 0}
       saveLabel={() => `Simpan ${config?.title ?? ""}`}
       renderPreview={(preview) => <AttendancePreview preview={preview} />}

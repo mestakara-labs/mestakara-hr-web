@@ -10,7 +10,7 @@ import {
   rowNumberColumn,
   toFilterOptions,
 } from "@/components/shared/data-table";
-import { ATTENDANCE_CODES, minutesToHours } from "@/lib/attendance-rules";
+import { minutesToHours, type EmployeeCategoryConfig } from "@/lib/attendance-rules";
 import type { AttendanceSummaryRow } from "@/types/api/attendance";
 
 const col = createDataTableColumnHelper<AttendanceSummaryRow>();
@@ -26,8 +26,10 @@ const optionsFromValues = (values: string[]) => toFilterOptions([...new Set(valu
  *
  *   No | Nama + No. Reg (cari, klik = detail) | Jabatan | Status | Sub Unit / AFD | Objek | Kelompok Upah
  *      | Cost Center | Uraian Cost Center | K | DW | I | S | M | C | L | Kosong | Lembur Reguler (jam) | Lembur DW (jam) | Catatan (peringatan & konflik)
+ *
+ * Karyawan Daily Worker: tanpa kolom DW dan Lembur DW.
  */
-function createRecapTableConfig(onOpen: (row: AttendanceSummaryRow) => void) {
+function createRecapTableConfig(onOpen: (row: AttendanceSummaryRow) => void, category: EmployeeCategoryConfig) {
   return defineTableConfig<AttendanceSummaryRow>({
     getRowId: (row) => row.id,
     defaultSorting: [{ id: "name", desc: false }],
@@ -110,7 +112,7 @@ function createRecapTableConfig(onOpen: (row: AttendanceSummaryRow) => void) {
       }),
 
       // Satu kolom per kode, urut seperti template (K, DW, I, S, M, C, L).
-      ...ATTENDANCE_CODES.map(({ code, label }) =>
+      ...category.codes.map(({ code, label }) =>
         col.accessor((row) => row.codes[code], {
           id: `code${code}`,
           header: code,
@@ -130,12 +132,16 @@ function createRecapTableConfig(onOpen: (row: AttendanceSummaryRow) => void) {
         cell: ({ row }) => `${minutesToHours(row.original.regular_overtime.minutes)} jam`,
       }),
 
-      col.accessor((row) => row.dw_overtime.minutes, {
-        id: "dwOvertime",
-        header: "Lembur DW",
-        meta: { alignRight: true, nowrap: true },
-        cell: ({ row }) => `${minutesToHours(row.original.dw_overtime.minutes)} jam`,
-      }),
+      ...(category.hasDwOvertime
+        ? [
+            col.accessor((row) => row.dw_overtime.minutes, {
+              id: "dwOvertime",
+              header: "Lembur DW",
+              meta: { alignRight: true, nowrap: true },
+              cell: ({ row }) => `${minutesToHours(row.original.dw_overtime.minutes)} jam`,
+            }),
+          ]
+        : []),
 
       // Peringatan & konflik. Accessor = jumlahnya, supaya bisa diurutkan (yang bermasalah di atas).
       col.accessor((row) => row.warnings.length + row.conflict_count, {
@@ -160,14 +166,16 @@ function createRecapTableConfig(onOpen: (row: AttendanceSummaryRow) => void) {
 
 interface AttendanceRecapTableProps {
   rows: AttendanceSummaryRow[];
+  /** Kategori karyawan (menentukan kolom kode & lembur) */
+  category: EmployeeCategoryConfig;
   /** Dipanggil saat nama karyawan diklik (membuka panel detail) */
   onOpen: (row: AttendanceSummaryRow) => void;
 }
 
 /** Tabel rekap daftar hadir per karyawan. Cari, filter, urut, dan halaman diurus oleh DataTable. */
-export function AttendanceRecapTable({ rows, onOpen }: AttendanceRecapTableProps) {
+export function AttendanceRecapTable({ rows, category, onOpen }: AttendanceRecapTableProps) {
   // Konfigurasi dibuat sekali saja (bukan di setiap render) supaya tabel tidak di-reset.
-  const config = useMemo(() => createRecapTableConfig(onOpen), [onOpen]);
+  const config = useMemo(() => createRecapTableConfig(onOpen, category), [onOpen, category]);
 
   return <DataTable config={config} data={rows} />;
 }

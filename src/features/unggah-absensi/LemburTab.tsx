@@ -6,10 +6,12 @@ import { Button } from "@mestakara/ui/button";
 
 import { PageError, PageLoading } from "@/components/shared/PageState";
 import { useApiGet } from "@/hooks/useApiGet";
-import { minutesToHours, type AttendanceImportConfig } from "@/lib/attendance-rules";
+import type { AttendanceImportConfig, EmployeeCategoryConfig } from "@/lib/attendance-rules";
 import type { OvertimeEntryRow } from "@/types/api/attendance";
+import type { PayrollRow } from "@/types/api/payroll";
 
 import { DwTargetSection } from "./DwTargetSection";
+import { OvertimeCostCards } from "./OvertimeCostCards";
 import { OvertimeDeleteDialog } from "./OvertimeDeleteDialog";
 import { OvertimeEntryDialog, type OvertimeEntryTarget } from "./OvertimeEntryDialog";
 import { OvertimeEntryTable, type OvertimeRowActions } from "./OvertimeEntryTable";
@@ -17,10 +19,15 @@ import { OvertimeEntryTable, type OvertimeRowActions } from "./OvertimeEntryTabl
 interface LemburTabProps {
   /** Lembur Reguler atau Lembur DW */
   config: AttendanceImportConfig;
+  /** Kategori karyawan yang dibuka (Lembur DW hanya Casual) */
+  category: EmployeeCategoryConfig;
   period: string;
   periodLabel: string;
   /** true = periode dikunci; tambah / ubah / hapus / rekomendasi dimatikan */
   locked: boolean;
+  /** Baris Daftar Upah kategori ini untuk kartu biaya Lembur Reguler; null = masih dimuat / gagal */
+  costRows: PayrollRow[] | null;
+  costError: string | null;
   /** Dipanggil setelah data berubah (status tab dimuat ulang) */
   onChanged: () => void;
 }
@@ -28,15 +35,16 @@ interface LemburTabProps {
 /**
  * Isi tab LEMBUR REGULER / LEMBUR DW di bawah kotak unggah:
  *
- *   (khusus Lembur DW) Target vs Upah Lembur DW + Hitung Rekomendasi   -> DwTargetSection
- *   Daftar Lembur DW Oktober 2026 — 37 baris · 18 karyawan · 64,5 jam          [+ Tambah Lembur]
+ *   Lembur Reguler: kartu ringkasan biaya                               -> OvertimeCostCards
+ *   Lembur DW: kartu biaya + Target vs Upah Lembur DW + Hitung Rekomendasi -> DwTargetSection
+ *   Daftar Lembur DW Karyawan Casual Oktober 2026                                [+ Tambah Lembur]
  *   (tabel OvertimeEntryTable; menu Aksi per baris = Edit / Hapus, alasan wajib, hasilnya bersumber Manual)
  *
- * Data dari /api/overtime-entries?period=YYYY-MM&type=lembur_reguler|lembur_dw.
+ * Data dari /api/overtime-entries?period=YYYY-MM&type=lembur_reguler|lembur_dw&employee_category=casual|daily_worker.
  */
-export function LemburTab({ config, period, periodLabel, locked, onChanged }: LemburTabProps) {
+export function LemburTab({ config, category, period, periodLabel, locked, costRows, costError, onChanged }: LemburTabProps) {
   const { data: rows, loading, error, reload } = useApiGet<OvertimeEntryRow[]>(
-    `/api/overtime-entries?${new URLSearchParams({ period, type: config.type })}`,
+    `/api/overtime-entries?${new URLSearchParams({ period, type: config.type, employee_category: category.value })}`,
   );
   const isDw = config.type === "lembur_dw";
 
@@ -54,9 +62,6 @@ export function LemburTab({ config, period, periodLabel, locked, onChanged }: Le
     [locked],
   );
 
-  const employeeCount = new Set((rows ?? []).map((row) => row.employee.id)).size;
-  const totalMinutes = (rows ?? []).reduce((sum, row) => sum + row.duration_minutes, 0);
-
   /** Setelah baris diubah / dihapus / ditambah: daftar, ringkasan DW, dan status tab dimuat ulang. */
   function afterRowChanged() {
     reload();
@@ -72,6 +77,8 @@ export function LemburTab({ config, period, periodLabel, locked, onChanged }: Le
 
   return (
     <div className="flex flex-col gap-6">
+      {!isDw && rows && <OvertimeCostCards entries={rows} costRows={costRows} costError={costError} />}
+
       {isDw && (
         <DwTargetSection
           key={targetVersion}
@@ -85,12 +92,7 @@ export function LemburTab({ config, period, periodLabel, locked, onChanged }: Le
       <section className="flex flex-col gap-3">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <h3 className="typo-label-m text-fg-heading">
-            Daftar {config.title} {periodLabel}
-            {rows && (
-              <span className="ml-2 typo-body-s font-normal text-fg-tertiary">
-                {rows.length} baris · {employeeCount} karyawan · {minutesToHours(totalMinutes)} jam
-              </span>
-            )}
+            Daftar {config.title} {category.label} {periodLabel}
           </h3>
           <Button variant="outline" onClick={() => setEditTarget({ mode: "add" })} disabled={locked}>
             <Plus />
@@ -106,6 +108,7 @@ export function LemburTab({ config, period, periodLabel, locked, onChanged }: Le
       <OvertimeEntryDialog
         target={editTarget}
         overtimeType={isDw ? "dw" : "reguler"}
+        category={category}
         title={config.title}
         period={period}
         periodLabel={periodLabel}

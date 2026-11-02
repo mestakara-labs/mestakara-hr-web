@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Calculator, Scale, Target, Users, Wallet } from "lucide-react";
+import { Calculator, Clock, Scale, Target, Wallet } from "lucide-react";
 import { Button } from "@mestakara/ui/button";
 
 import { NumberCard } from "@/components/shared/NumberCard";
 import { PageError, PageLoading } from "@/components/shared/PageState";
 import { useApiGet } from "@/hooks/useApiGet";
+import { minutesToHours } from "@/lib/attendance-rules";
+import { summarizeDwCost } from "@/lib/attendance-summary";
 import { formatDifference } from "@/lib/dw-overtime-rules";
 import { formatRupiah } from "@/lib/wage-rules";
 import type { DwOvertimeTargetRow } from "@/types/api/dw-overtime";
@@ -27,7 +29,7 @@ interface DwTargetSectionProps {
  * Bagian TARGET vs UPAH LEMBUR DW di tab Lembur DW:
  *
  *   Target vs Upah Lembur DW Oktober 2026                         [🖩 Hitung Rekomendasi]
- *   [Karyawan ber-DW 18] [Target Rp 3.420.000] [Upah Lembur DW Rp 3.380.000] [Selisih −Rp 40.000]
+ *   [Total Jam Lembur DW 64,5 jam] [Upah Lembur DW Rp 3.380.000] [Target Rp 3.420.000] [Selisih −Rp 40.000]
  *   (tabel DwTargetTable; centang baris = hitung untuk karyawan itu saja)
  *
  * Data dari /api/dw-overtime-targets?period=YYYY-MM. Rekomendasi menggantikan baris Excel & rekomendasi lama
@@ -39,12 +41,8 @@ export function DwTargetSection({ period, periodLabel, locked, onChanged }: DwTa
   // null = dialog tertutup; [] = semua karyawan ber-DW; isi = karyawan yang dicentang.
   const [recommendFor, setRecommendFor] = useState<string[] | null>(null);
 
-  const totals = (rows ?? []).reduce(
-    (sum, row) => ({ target: sum.target + row.target_amount, pay: sum.pay + row.dw_pay }),
-    { target: 0, pay: 0 },
-  );
-  const withDwDays = (rows ?? []).filter((row) => row.dw_days > 0).length;
-  const needAction = (rows ?? []).filter((row) => row.status !== "sesuai").length;
+  // Ringkasan biaya (jam, upah, target, selisih) dihitung dari daftar target yang sama dengan tabel.
+  const summary = summarizeDwCost(rows ?? []);
 
   function afterSaved() {
     setSelectedIds([]);
@@ -56,7 +54,7 @@ export function DwTargetSection({ period, periodLabel, locked, onChanged }: DwTa
     <section className="flex flex-col gap-3">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <h3 className="typo-label-m text-fg-heading">Target vs Upah Lembur DW {periodLabel}</h3>
-        <Button onClick={() => setRecommendFor(selectedIds)} disabled={locked || !rows || withDwDays === 0}>
+        <Button onClick={() => setRecommendFor(selectedIds)} disabled={locked || !rows || summary.withDwDays === 0}>
           <Calculator />
           {selectedIds.length > 0 ? `Hitung Rekomendasi (${selectedIds.length} karyawan)` : "Hitung Rekomendasi"}
         </Button>
@@ -73,15 +71,33 @@ export function DwTargetSection({ period, periodLabel, locked, onChanged }: DwTa
       {rows && (
         <>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <NumberCard title="Karyawan ber-DW" icon={Users} value={withDwDays} note={`${needAction} belum sesuai target`} />
-            <NumberCard title="Total Target" icon={Target} value={formatRupiah(totals.target)} textValue note="hari DW × Rp/hari" />
-            <NumberCard title="Total Upah Lembur DW" icon={Wallet} value={formatRupiah(totals.pay)} textValue note="dari baris lembur DW" />
+            <NumberCard
+              title="Total Jam Lembur DW"
+              icon={Clock}
+              value={`${minutesToHours(summary.minutes)} jam`}
+              textValue
+              note={`${summary.employees} karyawan · ${summary.entries} baris`}
+            />
+            <NumberCard
+              title="Upah Lembur DW"
+              icon={Wallet}
+              value={formatRupiah(summary.pay)}
+              textValue
+              note="dibayar sebagai lembur, pengganti hari DW"
+            />
+            <NumberCard
+              title="Target"
+              icon={Target}
+              value={formatRupiah(summary.target)}
+              textValue
+              note={`hari DW × Rp/hari · ${summary.withDwDays} karyawan ber-DW`}
+            />
             <NumberCard
               title="Selisih"
               icon={Scale}
-              value={formatDifference(totals.pay - totals.target)}
+              value={formatDifference(summary.pay - summary.target)}
               textValue
-              note="upah − target (minus = kurang)"
+              note={`upah − target (minus = kurang) · ${summary.notMatched} karyawan belum sesuai`}
             />
           </div>
 

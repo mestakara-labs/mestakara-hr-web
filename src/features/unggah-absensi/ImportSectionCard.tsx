@@ -8,11 +8,13 @@ import { Spinner } from "@mestakara/ui/spinner";
 
 import { formatDateTime } from "@/lib/date";
 import { ApiError, apiDownload } from "@/lib/http-client";
-import type { AttendanceImportConfig } from "@/lib/attendance-rules";
+import type { AttendanceImportConfig, EmployeeCategoryConfig } from "@/lib/attendance-rules";
 import type { AttendanceImportSection } from "@/types/api/attendance";
 
 interface ImportSectionCardProps {
   config: AttendanceImportConfig;
+  /** Kategori karyawan yang dibuka (template hanya berisi karyawan kategori ini) */
+  category: EmployeeCategoryConfig;
   /** Status unggahan jenis ini pada periode itu (undefined selama belum dimuat) */
   section: AttendanceImportSection | undefined;
   /** Periode "YYYY-MM" dan namanya, mis. "2026-10" / "Oktober 2026" */
@@ -25,7 +27,7 @@ interface ImportSectionCardProps {
 }
 
 /**
- * KOTAK UNGGAH satu jenis absensi (dipakai di ketiga tab):
+ * KOTAK UNGGAH satu jenis absensi pada satu kategori karyawan (dipakai di semua tab):
  *
  *   ▦ Daftar Hadir
  *   Satu kode per tanggal: K, DW, I, S, M, C, L. Hanya K yang dibayar; sel kosong = tidak masuk.
@@ -34,6 +36,7 @@ interface ImportSectionCardProps {
  */
 export function ImportSectionCard({
   config,
+  category,
   section,
   period,
   periodLabel,
@@ -48,8 +51,8 @@ export function ImportSectionCard({
     setDownloading(true);
     try {
       const fileName = await apiDownload(
-        `/api/attendance-imports/template?${new URLSearchParams({ period, type: config.type })}`,
-        `Template ${config.title} - ${periodLabel}.xlsx`,
+        `/api/attendance-imports/template?${new URLSearchParams({ period, type: config.type, employee_category: category.value })}`,
+        `Template ${config.title} ${category.label} - ${periodLabel}.xlsx`,
       );
       toast.success("Template berhasil diunduh", { description: fileName });
     } catch (error) {

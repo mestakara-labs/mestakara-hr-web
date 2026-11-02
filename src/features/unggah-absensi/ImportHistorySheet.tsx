@@ -5,12 +5,14 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@mestakara/ui/
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@mestakara/ui/sheet";
 
 import { formatDateTime } from "@/lib/date";
-import type { AttendanceImportConfig } from "@/lib/attendance-rules";
+import type { AttendanceImportConfig, EmployeeCategoryConfig } from "@/lib/attendance-rules";
 import type { AttendanceImportBatch } from "@/types/api/attendance";
 
 interface ImportHistorySheetProps {
   /** Jenis unggahan yang dilihat riwayatnya. null = panel tertutup. */
   config: AttendanceImportConfig | null;
+  /** Kategori karyawan yang dibuka */
+  category: EmployeeCategoryConfig;
   /** Nama periode untuk judul, mis. "Oktober 2026" */
   periodLabel: string;
   batches: AttendanceImportBatch[];
@@ -27,7 +29,7 @@ interface ImportHistorySheetProps {
  *   absensi-okt.xlsx                                          [Diganti]
  *   ...
  */
-export function ImportHistorySheet({ config, periodLabel, batches, onClose }: ImportHistorySheetProps) {
+export function ImportHistorySheet({ config, category, periodLabel, batches, onClose }: ImportHistorySheetProps) {
   return (
     <Sheet open={config !== null} onOpenChange={(open) => !open && onClose()}>
       <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-md">
@@ -35,7 +37,9 @@ export function ImportHistorySheet({ config, periodLabel, batches, onClose }: Im
           <>
             <SheetHeader>
               <SheetTitle>Riwayat Unggahan {config.title}</SheetTitle>
-              <SheetDescription>Periode {periodLabel}</SheetDescription>
+              <SheetDescription>
+                {category.label} · Periode {periodLabel}
+              </SheetDescription>
             </SheetHeader>
 
             {batches.length === 0 ? (
