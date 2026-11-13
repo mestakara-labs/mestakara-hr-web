@@ -137,8 +137,8 @@ function DetailHeader({ employee }: { employee: EmployeeProfileResource }) {
               employee={{
                 name: employee.name,
                 phone: employee.phone ?? "",
-                // WhatsApp kosong = sama dengan nomor telepon
-                whatsapp: employee.whatsapp ?? employee.phone ?? "",
+                // Nomor yang kosong ("") -> tombolnya tidak tampil
+                whatsapp: employee.whatsapp ?? "",
                 email: employee.email ?? "",
               }}
             />

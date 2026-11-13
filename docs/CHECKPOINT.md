@@ -284,13 +284,22 @@ Pelatihan (Program, Realisasi), dan grup Lainnya (Analitik SDM, Laporan, Pengatu
     - Total, Laki-laki, Perempuan, Rata-rata usia;
     - Status Karyawan dan rasionya;
     - Kelompok Usia, Pendidikan Terakhir;
-    - Golongan & Masa Pensiun.
+    - Golongan & Masa Pensiun;
+    - **Sebaran Karyawan per Status Karyawan** (`EmployeeBreakdownCard`, paling bawah, lebar penuh; hitungan di
+      `employee-breakdown.ts`): tab Sub Unit · Bidang · Objek Penempatan · Kategori Objek · Level BRM · Jenis Kelamin · Pendidikan;
+      tabel kelompok × Tetap/PKWT/Casual/Daily Worker + Total (persen) + batang proporsi bertumpuk + baris Total.
+      Baris "Belum ditempatkan"/"Tanpa Bidang"/"Tanpa Objek"/"Tanpa Kategori"/"Belum diisi" selalu paling bawah.
+      Tab baru cukup ditambah di `BREAKDOWN_GROUPS`.
   - tabel kolom:
     - No, Nama + avatar (klik = halaman detail; kolom `min-w-64` supaya nama tidak turun baris), Email, NIK, No. Registrasi,
       **Status Kepegawaian** (badge Aktif/Belum Aktif/Nonaktif, filter corong, **bawaan hanya Aktif**), Status (filter), Jenis Kelamin (filter), Usia ("55 tahun 7 bulan", diurutkan per total bulan);
     - **Tanggal Pensiun** (+ "usia pensiun 55/56 tahun") dan **Status Pensiun** (badge, filter, urut dari yang paling dekat); hanya karyawan Tetap, lainnya "-";
-    - Pendidikan (filter), Telepon, WhatsApp (kosong = sama dengan telepon), Aksi (Lihat Detail, Edit, Hapus).
-  - **tidak ada kolom Jabatan**, karena jabatan ditampilkan di menu Jabatan Karyawan.
+    - Pendidikan (filter), Telepon, WhatsApp (kosong = "-"), Aksi (Lihat Detail, Edit, Hapus).
+  - kolom penempatan (11 November 2026) setelah kolom Status: **Jabatan** (jabatan utama + status penugasan; penugasan ganda =
+    badge **"+1"** yang membuka popover semua jabatan aktif, `ActivePositionsPopover`), **Level BRM** (filter), **Sub Unit**,
+    **Bidang**, **Objek Penempatan** (hanya objek pertama). Belum ditempatkan = "-". Telepon & WhatsApp kosong = "-".
+  - Data dari `position` (jabatan utama + `division`, `sub_unit`, `placement_object`, `assignment_status`) dan `active_positions`
+    (semua jabatan aktif, utama di indeks 0) di `GET /api/employees`; backend sudah mengirimnya (`placementSummary`).
   - filter **"Pensiun pada periode"** di atas tabel (`RetirementFilter`, logika di `employee-retirement.ts`): Dari [Bulan][Tahun] s.d. [Bulan][Tahun];
     boleh hanya Dari atau hanya Sampai; periode terbalik memunculkan pesan dan tidak menyaring; menyaring data SEBELUM masuk tabel.
   - filter **Status Kepegawaian** ada DI KOLOM TABEL (ikon corong; bawaan Aktif lewat `defaultColumnFilters` di TableConfig;
@@ -318,7 +327,7 @@ Pelatihan (Program, Realisasi), dan grup Lainnya (Analitik SDM, Laporan, Pengatu
   - Biodata:
     - KTP 16 digit, Jenis Kelamin, Tempat/Tanggal Lahir (DatePicker), Agama, Status Perkawinan;
     - **Tanggal Masuk** (`hire_date`, wajib, tidak boleh di masa depan, harus setelah Tanggal Lahir) = dasar **masa kerja**;
-    - **No. Telepon (wajib) dan No. WhatsApp (opsional, terpisah**; kosongkan kalau sama);
+    - **No. Telepon (wajib) dan No. WhatsApp (opsional, terpisah**; kosongkan kalau tidak punya WhatsApp — **tidak** lagi berarti "sama dengan telepon");
     - Email, Alamat.
   - Karyawan baru hanya dibuat lewat **Penambahan Karyawan** (form dibuka dari wizard dengan `activation`).
     Tombol **Simpan sebagai Draf** (cukup Nama + Status Karyawan) muncul untuk karyawan baru / Belum Aktif; Simpan biasa = data lengkap.
@@ -779,7 +788,7 @@ Error validasi memakai status **422**, dengan key `errors` per isian. Untuk item
 
 - **Store bersama:** `src/lib/mock/organization-store.ts` (`globalThis`).
   - Berisi divisions, subUnits, placementCategories, placementObjects, positions, employees, assignments, supervisorChanges, transfers, activations, terminations.
-  - **`STORE_VERSION = 40`**: naikkan angka ini untuk me-reset data mock tanpa restart dev server, mis. setelah mengubah bentuk data atau untuk membersihkan data uji.
+  - **`STORE_VERSION = 41`**: naikkan angka ini untuk me-reset data mock tanpa restart dev server, mis. setelah mengubah bentuk data atau untuk membersihkan data uji.
   - Fungsi `to*Resource` mengubah record menjadi bentuk respons API.
 - **Data awal** (`src/lib/mock/organization/`):
   - `01-manager.ts` … `09-marketing-sales.ts`: jabatan per lampiran SK (`position()` dari `helpers.ts`);
@@ -817,6 +826,7 @@ Error validasi memakai status **422**, dengan key `errors` per isian. Untuk item
   - `SearchSelect` / `SearchMultiSelect` (Combobox Base UI; daftarnya diberi `pointer-events-auto` supaya bisa diklik di dalam Dialog; perubahan nilai beralasan `escape-key` diabaikan);
   - `DatePicker`, `FileUploadField`, `PhotoUploadField`, `PasswordInput`, `RequiredMark`, `FieldNote`.
 - Lainnya: `RowActions` (opsional `viewHref` = menu Lihat Detail), `FreshOnEachVisit`, `CompanyName`, `WhatsAppIcon`.
+- Logo: `MestakaraLogo.tsx` -> `MestakaraMark` (belah ketupat saja, warna = currentColor) & `MestakaraLogoTile` (belah ketupat oranye di kotak hijau tua, seperti ikon aplikasi). Logo PTPN tidak dipakai lagi.
 - **`data-table/`** (port dari proyek referensi, mode client-only):
   - fungsi: cari per kolom, filter checklist (mendukung nilai berupa array), urut, paginasi;
   - **pilih baris** (`selection` prop + `selectColumn`);
@@ -923,13 +933,17 @@ npx next build
 - Badge sidebar jumlah usulan Penambahan / Penonaktifan Draf belum dibuat.
 - Tombol "Nonaktifkan" langsung dari detail karyawan belum ada (lewat menu Penonaktifan Karyawan).
 - Mock tidak menonaktifkan/mengaktifkan akun login; itu tugas backend.
+- Form Mutasi/Penempatan masih mengizinkan beberapa objek per penugasan; ke depan dibatasi 1 objek
+  (Data Karyawan sudah hanya memakai objek pertama).
+- Klik angka di kartu Sebaran Karyawan untuk memfilter tabel karyawan (ditunda).
 - `docs/erd/ERD-Backend-HR-Mestakara.docx` = v1.5; `-v1.2.docx` disimpan sebagai arsip.
 - Di Chrome pengguna, fetch file PDF bisa mendapat 204 karena dicegat ekstensi pengunduh; server sendiri mengirim 200 (cek dengan curl).
 
 **Hal kecil yang perlu dikonfirmasi pemilik proyek**
 - Kartu statistik "Menjelang pensiun (≤ 2 tahun)" masih menghitung SEMUA status karyawan (termasuk PKWT/Casual/Daily) dan yang sudah lewat tanggal pensiun, sedangkan kolom Status Pensiun hanya untuk karyawan Tetap. Perlu disamakan?
 - Struktur Organisasi hanya menampilkan penugasan **Aktif**. Mutasi dengan TMT di masa depan baru terlihat di bagan setelah tanggalnya tiba (keterbatasan yang sudah diketahui).
-- Asumsi No. WhatsApp opsional (kalau kosong, memakai No. Telepon) belum pernah dikoreksi pemilik proyek.
+- Backend `PositionResource.php` (bagan organisasi) masih mengisi `whatsapp` dengan nomor telepon kalau kosong; perlu diubah
+  menjadi `''` supaya sama dengan aturan baru (lihat riwayat no. 66).
 
 **Pengujian Chrome yang sudah lengkap untuk Mutasi** (9 Oktober 2026)
 - Ubah Draf, Hapus Draf, unggah petikan, unggah scan SK sampai Berlaku.
@@ -1263,3 +1277,25 @@ npx next build
     Porsi terhadap Upah Hari Kerja · Biaya Lembur Terbesar. Lembur DW (kartu di `DwTargetSection`): Total Jam · Upah Lembur DW ·
     Target · Selisih. Kalimat "N baris · N karyawan · N jam" di atas tabel lembur dihapus. Tab besar kategori boleh turun baris di HP.
     Dicek di Chrome (Okt 2026: angka = Daftar Upah; 375 px tanpa geser horizontal).
+65. **Data Karyawan: penempatan & sebaran per status** (11 November 2026). Tipe `EmployeePlacement`; `position` diperluas
+    (`assignment_id`, `assignment_status`, `division`, `sub_unit`, `placement_object` = objek pertama) + `active_positions`.
+    Mock: `findActivePlacements` + `toEmployeePlacement` (urutan Definitif lalu BRM tertinggi, sama dengan backend), `STORE_VERSION` = 41.
+    Kartu `EmployeeBreakdownCard` + kolom Jabatan (+1 popover), Level BRM, Sub Unit, Bidang, Objek Penempatan; Telepon/WhatsApp kosong "-".
+66. **Aturan WhatsApp diseragamkan** (11 November 2026): No. WhatsApp kosong = "-" / tidak ada, TIDAK lagi diganti No. Telepon,
+    di semua tempat: tabel & tab Biodata Data Karyawan, `EmployeeContactButtons` (tombol Telepon/WhatsApp disembunyikan kalau kosong),
+    `EmployeeDetailSheet` bagan organisasi (tombol WhatsApp nonaktif, baris "-"), mock `toPositionResource`, komentar tipe, dan
+    catatan form ("kosongkan kalau tidak punya WhatsApp"). Data lama yang WhatsApp-nya kosong kini tampil "-".
+67. **Grafik SeriesChart tidak lagi bertumpuk saat datanya banyak** (11 November 2026; berlaku di Analitik SDM & Dasbor).
+    Ukuran dihitung di `components/shared/dashboard/series-chart-layout.ts` (`calculateChartSize`, angka-angka bisa diubah di atas file):
+    mendatar = tinggi 32 px per kategori, lebar label kiri mengikuti nama terpanjang (64–200 px), nama > 28 huruf dipotong "…";
+    tegak = lebar minimum per kategori (28 px, + 10 px per batang berdampingan), grafik bisa DIGESER ke samping kalau lebih lebar dari kartu,
+    semua label bawah ditulis dan dimiringkan 40° (dipotong 18 huruf) kalau tidak muat di lebar kartu sebenarnya (`hooks/useElementWidth`).
+    Legenda & tooltip buatan sendiri (`SeriesChartParts.tsx`): legenda di bawah grafik (bisa digulir, maks ±4 baris);
+    tooltip menulis nama kategori lengkap, hanya seri bernilai ≠ 0 (maks. 10 + "+N lainnya") dan Total kalau serinya > 1.
+68. **Analitik SDM: lebar kolom tabel lebih proporsional** (11 November 2026). `AnalitikTable`: No sempit, kolom <Lihat per> 2/5
+    (min. 10rem, nama panjang turun baris), kolom metrik selebar angkanya (tidak turun baris), Porsi 2/5 (min. 10rem) — sebelumnya
+    Porsi dikunci 12rem sehingga sisa ruang di layar lebar melebarkan kolom nama & angka. `HeatMatrixTable` (juga dipakai Dasbor):
+    kolom nama 1/4 (min. 10rem), kolom angka min. 5rem, judul kolom panjang boleh turun baris.
+69. **Logo PTPN diganti logo Mestakara** (12 November 2026). Sumber: ikon aplikasi di figcraft (`design/app-icon/web`).
+    Favicon: `src/app/favicon.ico`, `src/app/icon.svg`, `src/app/apple-icon.png` (konvensi file ikon Next). Komponen baru
+    `components/shared/MestakaraLogo.tsx` dipakai di SidebarBrand, LoginHeroPanel, dan LoginPage (versi HP). `public/images/logo-ptpn1.png` dihapus.

@@ -96,12 +96,20 @@ function EmployeeDetail({ selected, positions }: { selected: SelectedEmployee; p
               Email
             </a>
           </Button>
-          <Button size="sm" asChild>
-            <a href={whatsAppLink(employee.whatsapp)} target="_blank" rel="noopener noreferrer">
+          {/* WhatsApp belum diisi -> tombolnya tidak bisa diklik */}
+          {employee.whatsapp ? (
+            <Button size="sm" asChild>
+              <a href={whatsAppLink(employee.whatsapp)} target="_blank" rel="noopener noreferrer">
+                <WhatsAppIcon className="size-4" />
+                WhatsApp
+              </a>
+            </Button>
+          ) : (
+            <Button size="sm" disabled>
               <WhatsAppIcon className="size-4" />
               WhatsApp
-            </a>
-          </Button>
+            </Button>
+          )}
         </div>
       </SheetHeader>
 
@@ -110,8 +118,8 @@ function EmployeeDetail({ selected, positions }: { selected: SelectedEmployee; p
         <DetailSection title="Data Pegawai">
           <DetailRow label="NIK" value={employee.nik} />
           <DetailRow label="Email" value={employee.email} />
-          <DetailRow label="Telepon" value={employee.phone} />
-          <DetailRow label="WhatsApp" value={employee.whatsapp} />
+          <DetailRow label="Telepon" value={employee.phone || "-"} />
+          <DetailRow label="WhatsApp" value={employee.whatsapp || "-"} />
         </DetailSection>
 
         {/* 3. Data jabatan */}

@@ -25,8 +25,8 @@ export function BiodataTab({ employee }: { employee: EmployeeProfileResource }) 
       <DetailItem label="Agama">{employee.religion}</DetailItem>
       <DetailItem label="Status Perkawinan">{employee.marital_status}</DetailItem>
       <DetailItem label="No. Telepon">{employee.phone}</DetailItem>
-      {/* WhatsApp kosong = sama dengan nomor telepon */}
-      <DetailItem label="No. WhatsApp">{employee.whatsapp ?? employee.phone}</DetailItem>
+      {/* WhatsApp kosong ditulis "-" (tidak diganti nomor telepon) */}
+      <DetailItem label="No. WhatsApp">{employee.whatsapp}</DetailItem>
       <DetailItem label="Email">{employee.email}</DetailItem>
       <DetailItem label="Alamat">{employee.address}</DetailItem>
       <DetailItem label="Rekening Bank">

@@ -23,6 +23,10 @@ interface AnalitikTableProps {
  *   tanpa "Pisah per": No | <Lihat per> | <Metrik> | Porsi (batang + %)   + baris Total
  *   dengan "Pisah per": matriks berwarna (HeatMatrixTable)
  * Urutan baris mengikuti pilihan "Urutkan" (diurutkan backend).
+ *
+ * LEBAR KOLOM (supaya proporsional di tablet & layar lebar):
+ *   No = sempit | <Lihat per> = 2/5 (nama panjang turun baris) | <Metrik> = selebar angkanya | Porsi = 2/5
+ * Di layar sempit tabel tidak dipadatkan di bawah lebar minimumnya; tabel bisa digeser ke samping.
  */
 export function AnalitikTable({ result, state, onSelect }: AnalitikTableProps) {
   if (result.matrix) return <HeatMatrixTable data={result.matrix} />;
@@ -39,12 +43,12 @@ export function AnalitikTable({ result, state, onSelect }: AnalitikTableProps) {
         <TableHeader>
           <TableRow>
             <TableHead className="w-12">No</TableHead>
-            <TableHead>{analyticsDimensionLabel(state.groupBy)}</TableHead>
-            <TableHead className="text-right">
+            <TableHead className="w-2/5 min-w-40">{analyticsDimensionLabel(state.groupBy)}</TableHead>
+            <TableHead className="text-right whitespace-nowrap">
               {metricLabel}
               {unitSuffix}
             </TableHead>
-            <TableHead className="w-48 min-w-40">Porsi</TableHead>
+            <TableHead className="w-2/5 min-w-40">Porsi</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -55,7 +59,7 @@ export function AnalitikTable({ result, state, onSelect }: AnalitikTableProps) {
               className={cn(canDrill && "cursor-pointer")}
             >
               <TableCell className="text-fg-tertiary">{index + 1}</TableCell>
-              <TableCell className="min-w-32 font-medium whitespace-normal text-fg-heading">{row.label}</TableCell>
+              <TableCell className="font-medium whitespace-normal text-fg-heading">{row.label}</TableCell>
               <TableCell className="text-right whitespace-nowrap">{formatCell(row.value, result.unit)}</TableCell>
               <TableCell>
                 <div className="flex items-center gap-2">

@@ -2,6 +2,7 @@ import Image from "next/image";
 import { ShieldCheck } from "lucide-react";
 
 import { CompanyName } from "@/components/shared/CompanyName";
+import { MestakaraLogoTile } from "@/components/shared/MestakaraLogo";
 
 /** Angka ringkas yang tampil di kartu kaca bagian bawah panel. */
 const STATISTICS = [
@@ -32,15 +33,7 @@ export function LoginHeroPanel() {
 
       {/* Bagian atas: logo + nama perusahaan */}
       <div className="relative flex items-center gap-3">
-        <div className="relative size-12 shrink-0 rounded-md bg-surface p-1.5">
-          <Image
-            src="/images/logo-ptpn1.png"
-            alt="Logo PTPN I"
-            fill
-            sizes="48px"
-            className="object-contain p-1.5"
-          />
-        </div>
+        <MestakaraLogoTile className="size-12 border-white/20" />
         <div>
           <p className="typo-label-l">HR Dashboard</p>
           <p className="typo-body-s text-green-100">

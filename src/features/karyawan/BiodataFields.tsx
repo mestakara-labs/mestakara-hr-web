@@ -162,7 +162,7 @@ export function BiodataFields({ values, changeValue, errors, disabled }: FormSec
           error={errors.whatsapp}
           disabled={disabled}
           placeholder="Cth. 0812-3456-7890"
-          note="kosongkan kalau sama dengan No. Telepon."
+          note="kosongkan kalau tidak punya WhatsApp. Kalau nomornya sama dengan No. Telepon, tetap diisi."
         />
         <TextField
           id="email"

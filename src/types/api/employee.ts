@@ -66,6 +66,39 @@ export interface FamilyMemberItem {
 }
 
 /**
+ * Satu jabatan yang sedang dipegang karyawan + tempat penempatannya.
+ *
+ * Contoh:
+ *   {
+ *     assignment_id: "pen-0101",
+ *     id: "jab-001", title: "Asisten Manager Operasional", brm_level: 2, job_grade: 12,
+ *     assignment_status: "Definitif",
+ *     division: { id: "operasional", name: "Operasional" },
+ *     sub_unit: { id: "gunung-mas", name: "Agrowisata Gunung Mas", afdeling_code: "AFD03" },
+ *     placement_object: { id: "atv", name: "ATV", category_name: "Wahana" },
+ *   }
+ */
+export interface EmployeePlacement {
+  /** Id penugasan jabatan (unik per baris) */
+  assignment_id: string;
+  /** Id jabatan */
+  id: string;
+  title: string;
+  brm_level: number;
+  job_grade: number | null;
+  /** "Definitif", "Penugasan", "Pj", "Plt", "Plh", atau "Ptr" */
+  assignment_status: string;
+  /** Bidang jabatan. null = jabatan tanpa bidang. */
+  division: { id: string; name: string } | null;
+  sub_unit: { id: string; name: string; afdeling_code: string | null };
+  /**
+   * Objek penempatan. Hanya SATU objek (objek pertama), karena ke depan karyawan
+   * hanya ditempatkan di satu objek. null = tanpa objek.
+   */
+  placement_object: { id: string; name: string; category_name: string | null } | null;
+}
+
+/**
  * Satu karyawan, seperti yang dikirim GET /api/employees.
  *
  * Dengan `?period=YYYY-MM` (Periode Data), isian `active_status`, `inactive_since`, `service_months`,
@@ -99,7 +132,7 @@ export interface EmployeeProfileResource {
   marital_status: string | null;
   /** Nomor telepon (wajib untuk karyawan aktif) */
   phone: string | null;
-  /** Nomor WhatsApp. null = sama dengan nomor telepon. */
+  /** Nomor WhatsApp. null = belum diisi (ditampilkan "-", TIDAK diganti nomor telepon). */
   whatsapp: string | null;
   email: string | null;
   address: string | null;
@@ -131,8 +164,16 @@ export interface EmployeeProfileResource {
   missing_fields: string[];
 
   // --- Penempatan (diisi server; diatur terpisah dari form ini) -------------
-  /** Jabatan yang dipegang. null = belum ditempatkan. */
-  position: { id: string; title: string; brm_level: number; job_grade: number | null } | null;
+  /**
+   * Jabatan UTAMA yang dipegang (penugasan Definitif, atau kalau tidak ada, Level BRM tertinggi)
+   * beserta bidang, sub unit, dan objek penempatannya. null = belum ditempatkan.
+   */
+  position: EmployeePlacement | null;
+  /**
+   * SEMUA jabatan yang sedang dipegang (mis. Definitif + Plt), jabatan utama di urutan pertama.
+   * Kosong = belum ditempatkan. Lebih dari satu = penugasan ganda (badge "+1" di tabel karyawan).
+   */
+  active_positions: EmployeePlacement[];
 
   // --- Data upah yang berlaku (riwayat lengkapnya di tab Rekening & Cost Center) ---
   /** Rekening bank yang berlaku. null = belum diisi. (Opsional: belum dikirim backend versi lama.) */

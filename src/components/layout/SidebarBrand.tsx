@@ -1,8 +1,9 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@mestakara/ui/sidebar";
+
+import { MestakaraLogoTile } from "@/components/shared/MestakaraLogo";
 
 /** Logo + nama aplikasi di bagian paling atas sidebar. Diklik -> kembali ke dasbor. */
 export function SidebarBrand() {
@@ -11,15 +12,7 @@ export function SidebarBrand() {
       <SidebarMenuItem>
         <SidebarMenuButton size="lg" asChild>
           <Link href="/dashboard">
-            <div className="relative flex aspect-square size-8 items-center justify-center rounded-md bg-surface">
-              <Image
-                src="/images/logo-ptpn1.png"
-                alt="Logo PTPN I"
-                fill
-                sizes="32px"
-                className="object-contain p-1"
-              />
-            </div>
+            <MestakaraLogoTile className="size-8" />
             <div className="grid flex-1 text-left typo-body-m">
               <span className="truncate font-medium">HR Dashboard</span>
               <span className="truncate typo-body-s">PTPN I Regional 2 - Agrowisata</span>

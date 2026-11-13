@@ -8,6 +8,7 @@ import { RETIREMENT_AGE_KARPEL, RETIREMENT_AGE_KARPIM } from "@/lib/employee-rul
 import type { EmployeeProfileResource } from "@/types/api/employee";
 
 import { calculateEmployeeStats, NEAR_RETIREMENT_YEARS, toPercent } from "./employee-stats";
+import { EmployeeBreakdownCard } from "./EmployeeBreakdownCard";
 
 /**
  * Kartu statistik di atas tabel karyawan:
@@ -15,6 +16,7 @@ import { calculateEmployeeStats, NEAR_RETIREMENT_YEARS, toPercent } from "./empl
  *   [Total Karyawan] [Laki-laki] [Perempuan] [Rata-rata Usia]
  *   [Status Karyawan          ] [Kelompok Usia             ]
  *   [Pendidikan Terakhir      ] [Golongan & Masa Pensiun   ]
+ *   [Sebaran Karyawan per Status Karyawan (tab, lebar penuh) ]
  *
  * Angkanya dihitung dari SEMUA karyawan (tidak ikut filter tabel).
  * Usia & pensiun dihitung pada `referenceDate` ("YYYY-MM-DD") = tanggal acuan Periode Data.
@@ -101,6 +103,9 @@ export function KaryawanStats({ employees, referenceDate }: { employees: Employe
           </CardContent>
         </Card>
       </div>
+
+      {/* Baris 4: sebaran per status karyawan, per Sub Unit / Bidang / Objek / ... (lebar penuh) */}
+      <EmployeeBreakdownCard employees={employees} />
     </div>
   );
 }

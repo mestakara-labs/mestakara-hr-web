@@ -1,6 +1,5 @@
-import Image from "next/image";
-
 import { CompanyName } from "@/components/shared/CompanyName";
+import { MestakaraLogoTile } from "@/components/shared/MestakaraLogo";
 
 import { LoginForm } from "./LoginForm";
 import { LoginHeroPanel } from "./LoginHeroPanel";
@@ -28,7 +27,7 @@ export function LoginPage() {
         <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center">
           {/* Identitas perusahaan khusus layar kecil (panel kiri disembunyikan di HP) */}
           <div className="mb-8 flex items-center gap-3 lg:hidden">
-            <Image src="/images/logo-ptpn1.png" alt="Logo PTPN I" width={30} height={40} />
+            <MestakaraLogoTile className="size-10" />
             <p className="typo-body-s text-fg-secondary">
               <CompanyName />
             </p>

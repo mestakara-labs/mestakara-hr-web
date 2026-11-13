@@ -23,7 +23,7 @@ import type { EducationItem, EmployeeProfileResource, FamilyMemberItem } from "@
  */
 export type EmployeeRecord = Omit<
   EmployeeProfileResource,
-  "position" | "education" | "major" | "educations" | "active_status" | "inactive_since" | "service_months" | "missing_fields"
+  "position" | "active_positions" | "education" | "major" | "educations" | "active_status" | "inactive_since" | "service_months" | "missing_fields"
 > & {
   educations: EducationItem[];
   /**

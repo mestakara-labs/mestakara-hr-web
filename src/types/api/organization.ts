@@ -15,7 +15,7 @@ export interface EmployeeResource {
   email: string;
   /** Nomor telepon, mis. "0812-3456-7890" */
   phone: string;
-  /** Nomor WhatsApp; sama dengan `phone` kalau karyawan tidak punya nomor WA tersendiri */
+  /** Nomor WhatsApp; "" kalau belum diisi (TIDAK diganti nomor telepon) */
   whatsapp: string;
   sub_unit_name: string;
   /** Nama objek penempatan, bisa lebih dari satu. Kosong = tanpa objek. */

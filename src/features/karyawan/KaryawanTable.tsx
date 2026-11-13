@@ -15,6 +15,8 @@ import {
   toFilterOptions,
   type ColumnFilterValue,
 } from "@/components/shared/data-table";
+import { BrmLevelBadge } from "@/features/jabatan/BrmLevelBadge";
+import { BRM_LEVEL_ORDER, getBrmLevel } from "@/features/organisasi/brm-level";
 import { EMPLOYEE_ACTIVE_STATUS, EMPLOYEE_ACTIVE_STATUSES } from "@/lib/activation-rules";
 import { formatMonths, formatDate, getAgeInMonths, parseDate } from "@/lib/date";
 import {
@@ -26,6 +28,7 @@ import {
 import { getInitials } from "@/lib/initials";
 import type { EmployeeProfileResource } from "@/types/api/employee";
 
+import { ActivePositionsPopover } from "./ActivePositionsPopover";
 import { EmployeeActiveStatusBadge } from "./EmployeeActiveStatusBadge";
 import { getEmployeeRetirement } from "./employee-retirement";
 import { RetirementStatusBadge } from "./RetirementStatusBadge";
@@ -39,6 +42,12 @@ function detailHref(employee: EmployeeProfileResource): string {
 
 /** Isi sel kosong, mis. tanggal pensiun karyawan non-Tetap. */
 const EMPTY = "-";
+
+/** Pilihan filter yang mengikuti isi data: tanpa kembar, urut A-Z, "-" paling akhir. */
+function optionsFromData(values: string[]) {
+  const names = [...new Set(values)].filter((value) => value !== EMPTY).sort((a, b) => a.localeCompare(b, "id"));
+  return toFilterOptions(values.includes(EMPTY) ? [...names, EMPTY] : names);
+}
 
 /** Label kategori pensiun, urut dari yang paling dekat: ["Sudah Pensiun", "≤ 1 bulan", ...]. */
 const PERIOD_LABELS = RETIREMENT_PERIODS.map((period) => period.label);
@@ -56,13 +65,18 @@ function periodOrder(period: string): number {
  * Kolom-kolom tabel karyawan:
  *
  *   No | Nama (cari, urut, klik = detail) | Email (cari) | NIK (cari, urut) | No. Registrasi (cari)
- *      | Status Kepegawaian (filter, bawaan Aktif) | Status (filter) | Jenis Kelamin (filter)
+ *      | Status Kepegawaian (filter, bawaan Aktif) | Status (filter)
+ *      | Jabatan (cari, urut; "+1" = penugasan ganda) | Level BRM (filter, urut)
+ *      | Sub Unit (cari, filter, urut) | Bidang (filter, urut) | Objek Penempatan (cari, filter, urut)
+ *      | Jenis Kelamin (filter)
  *      | Usia "55 tahun 7 bulan" (urut) | Tanggal Pensiun (urut) | Status Pensiun (filter, urut)
  *      | Pendidikan (filter) | Telepon (cari) | WhatsApp (cari) | Aksi (Lihat Detail, Edit, Hapus)
  *
  * Tanggal & Status Pensiun hanya untuk karyawan Tetap; lainnya "-".
  *
- * Jabatan sengaja tidak ditampilkan di sini; data penempatan dikelola terpisah.
+ * Jabatan s.d. Objek Penempatan = jabatan UTAMA (`employee.position`); belum ditempatkan "-".
+ * Penempatannya hanya dilihat di sini; diubah lewat menu Mutasi & Penempatan.
+ * Telepon & WhatsApp yang kosong ditulis "-".
  *
  * Usia & pensiun dihitung pada `referenceDate` ("YYYY-MM-DD") = tanggal acuan Periode Data.
  */
@@ -73,7 +87,7 @@ function createKaryawanTableConfig(onDelete: (employee: EmployeeProfileResource)
     getRowId: (employee) => employee.id,
     emptyMessage: "Tidak ada karyawan yang cocok dengan pencarian atau filter.",
     defaultColumnFilters: ACTIVE_ONLY_FILTER,
-    tableClassName: "min-w-384",
+    tableClassName: "min-w-480",
     columns: col.columns([
       rowNumberColumn<EmployeeProfileResource>(),
 
@@ -132,6 +146,63 @@ function createKaryawanTableConfig(onDelete: (employee: EmployeeProfileResource)
         cell: ({ getValue }) => <Badge variant="neutral" dot={false}>{getValue().replace("Karyawan ", "")}</Badge>,
       }),
 
+      // Jabatan utama + status penugasannya (mis. "Definitif").
+      // Kalau memegang lebih dari satu jabatan, muncul badge "+1" yang bisa diklik (ActivePositionsPopover).
+      col.accessor((employee) => employee.position?.title ?? EMPTY, {
+        id: "position",
+        header: "Jabatan",
+        meta: { search: { placeholder: "Cari jabatan..." }, width: "min-w-64" },
+        cell: ({ row }) => {
+          const { position, active_positions } = row.original;
+          if (!position) return <span className="text-fg-tertiary">{EMPTY}</span>;
+
+          return (
+            <div className="flex items-start gap-2">
+              <div>
+                <p className="text-fg-heading">{position.title}</p>
+                <p className="typo-body-s text-fg-tertiary">{position.assignment_status}</p>
+              </div>
+              <ActivePositionsPopover positions={active_positions} />
+            </div>
+          );
+        },
+      }),
+
+      // "BRM-1" … "BRM-6": urutan teksnya sama dengan urutan levelnya. Belum ditempatkan "-".
+      col.accessor((employee) => (employee.position ? getBrmLevel(employee.position.brm_level).label : EMPTY), {
+        id: "brmLevel",
+        header: "Level BRM",
+        meta: {
+          filter: { options: toFilterOptions([...BRM_LEVEL_ORDER.map((level) => getBrmLevel(level).label), EMPTY]) },
+          nowrap: true,
+        },
+        cell: ({ row }) =>
+          row.original.position ? (
+            <BrmLevelBadge level={row.original.position.brm_level} />
+          ) : (
+            <span className="text-fg-tertiary">{EMPTY}</span>
+          ),
+      }),
+
+      col.accessor((employee) => employee.position?.sub_unit.name ?? EMPTY, {
+        id: "subUnit",
+        header: "Sub Unit",
+        meta: { search: { placeholder: "Cari sub unit..." }, filter: { options: optionsFromData }, nowrap: true },
+      }),
+
+      col.accessor((employee) => employee.position?.division?.name ?? EMPTY, {
+        id: "division",
+        header: "Bidang",
+        meta: { filter: { options: optionsFromData }, nowrap: true },
+      }),
+
+      // Hanya satu objek (objek pertama); ke depan karyawan hanya ditempatkan di satu objek.
+      col.accessor((employee) => employee.position?.placement_object?.name ?? EMPTY, {
+        id: "placementObject",
+        header: "Objek Penempatan",
+        meta: { search: { placeholder: "Cari objek..." }, filter: { options: optionsFromData }, nowrap: true },
+      }),
+
       col.accessor("gender", {
         header: "Jenis Kelamin",
         meta: { filter: { options: toFilterOptions(GENDER_OPTIONS) }, nowrap: true },
@@ -180,14 +251,16 @@ function createKaryawanTableConfig(onDelete: (employee: EmployeeProfileResource)
         meta: { filter: { options: toFilterOptions(EDUCATION_OPTIONS) }, nowrap: true },
       }),
 
-      col.accessor("phone", {
+      // Nomor yang belum diisi ditulis "-".
+      col.accessor((employee) => employee.phone || EMPTY, {
+        id: "phone",
         header: "Telepon",
         enableSorting: false,
         meta: { search: { placeholder: "Cari telepon..." }, nowrap: true, cellClassName: "text-fg-secondary" },
       }),
 
-      // WhatsApp kosong = sama dengan nomor telepon, jadi yang tampil nomor telepon.
-      col.accessor((employee) => employee.whatsapp ?? employee.phone, {
+      // WhatsApp yang belum diisi ditulis "-" (tidak diganti nomor telepon).
+      col.accessor((employee) => employee.whatsapp || EMPTY, {
         id: "whatsapp",
         header: "WhatsApp",
         enableSorting: false,

@@ -20,6 +20,9 @@ import { COMPACT_TABLE } from "./table-style";
  *   Total         160    73     359   5     597
  *
  * Makin besar nilainya, makin pekat warnanya. "Persen" = porsi dari total keseluruhan.
+ *
+ * LEBAR KOLOM: kolom nama = 1/4 tabel (min. 10rem, nama panjang turun baris); kolom angka minimal 5rem
+ * dan berbagi sisa lebar, jadi di layar lebar angkanya tidak terdorong jauh dari namanya.
  */
 export function HeatMatrixTable({ data }: { data: MatrixData }) {
   const [mode, setMode] = useState<"value" | "share">("value");
@@ -46,9 +49,9 @@ export function HeatMatrixTable({ data }: { data: MatrixData }) {
         <Table className={COMPACT_TABLE}>
           <TableHeader>
             <TableRow>
-              <TableHead />
+              <TableHead className="w-1/4 min-w-40" />
               {data.columns.map((column) => (
-                <TableHead key={column.key} className="text-right">
+                <TableHead key={column.key} className="min-w-20 text-right whitespace-normal">
                   {column.label}
                 </TableHead>
               ))}
@@ -58,7 +61,7 @@ export function HeatMatrixTable({ data }: { data: MatrixData }) {
           <TableBody>
             {data.rows.map((row, rowIndex) => (
               <TableRow key={row.key}>
-                <TableCell className="min-w-32 font-medium whitespace-normal text-fg-heading">{row.label}</TableCell>
+                <TableCell className="font-medium whitespace-normal text-fg-heading">{row.label}</TableCell>
                 {data.columns.map((column, columnIndex) => {
                   const value = data.values[rowIndex]?.[columnIndex] ?? 0;
                   return (

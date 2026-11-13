@@ -15,7 +15,7 @@ import { monthsSince, parseDate, toDateText } from "@/lib/date";
 import { findHighestEducation, findMissingEmployeeFields, sortByHighestEducation } from "@/lib/employee-rules";
 import type { AssignmentResource, AssignmentSupervisor } from "@/types/api/assignment";
 import type { DivisionResource } from "@/types/api/division";
-import type { EmployeeProfileResource } from "@/types/api/employee";
+import type { EmployeePlacement, EmployeeProfileResource } from "@/types/api/employee";
 import type { EmployeeResource, PositionResource } from "@/types/api/organization";
 import type { PlacementCategoryResource } from "@/types/api/placement-category";
 import type { PlacementObjectResource } from "@/types/api/placement-object";
@@ -48,7 +48,7 @@ import type { TransferRecord } from "./organization/transfers";
  * diubah (mis. ada isian baru), supaya data lama di memori server dibuang dan
  * diisi ulang otomatis — tanpa perlu me-restart `npm run dev`.
  */
-const STORE_VERSION = 40;
+const STORE_VERSION = 41;
 
 interface OrganizationStore {
   version: number;
@@ -131,7 +131,7 @@ export function toPositionResource(position: PositionRecord): PositionResource {
           name: employee.name,
           email: employee.email ?? "",
           phone: employee.phone ?? "",
-          whatsapp: employee.whatsapp ?? employee.phone ?? "",
+          whatsapp: employee.whatsapp ?? "",
           sub_unit_name: subUnits.find((item) => item.id === assignment.sub_unit_id)?.name ?? "-",
           placement_object_names: toObjectNames(assignment.placement_object_ids),
           // Atasan yang penugasannya sudah selesai tidak digambar lagi di bagan.
@@ -144,32 +144,71 @@ export function toPositionResource(position: PositionRecord): PositionResource {
 }
 
 /**
- * Jabatan UTAMA seorang karyawan, dipakai untuk golongan (karpim/karpel) dan usia pensiun:
- * penugasan Definitif yang aktif, atau kalau tidak ada, penugasan aktif dengan level BRM tertinggi.
- * "Aktif" = berjalan pada tanggal `today` ("YYYY-MM-DD", bawaan hari ini). null = belum ditempatkan.
+ * SEMUA jabatan yang sedang dipegang seorang karyawan pada tanggal `today` ("YYYY-MM-DD"),
+ * lengkap dengan bidang, sub unit, dan objek penempatannya.
+ *
+ * Urutannya = urutan jabatan UTAMA lebih dulu:
+ *   1. penugasan Definitif di depan,
+ *   2. lalu Level BRM tertinggi (angka BRM terkecil).
+ * Jadi jabatan utama selalu ada di indeks 0. Daftar kosong = belum ditempatkan.
+ *
+ * Jabatan utama dipakai untuk golongan (karpim/karpel), usia pensiun, dan kolom Jabatan di tabel karyawan.
  */
-function findMainPosition(employeeId: string, today: string): PositionRecord | null {
+function findActivePlacements(employeeId: string, today: string): EmployeePlacement[] {
   const { positions } = getStore();
-  const activePositions = getActiveAssignments(today)
+
+  return getActiveAssignments(today)
     .filter((assignment) => assignment.employee_id === employeeId)
-    .map((assignment) => ({
-      assignment,
-      position: positions.find((item) => item.id === assignment.position_id),
-    }));
+    .flatMap((assignment) => {
+      const position = positions.find((item) => item.id === assignment.position_id);
+      return position ? [{ assignment, position }] : [];
+    })
+    .sort((a, b) => {
+      const aIsDefinitive = a.assignment.assignment_status === DEFINITIVE_STATUS ? 0 : 1;
+      const bIsDefinitive = b.assignment.assignment_status === DEFINITIVE_STATUS ? 0 : 1;
+      if (aIsDefinitive !== bIsDefinitive) return aIsDefinitive - bIsDefinitive;
 
-  const definitive = activePositions.find((item) => item.assignment.assignment_status === DEFINITIVE_STATUS);
-  if (definitive?.position) return definitive.position;
+      return a.position.brm_level - b.position.brm_level;
+    })
+    .map(({ assignment, position }) => toEmployeePlacement(assignment, position));
+}
 
-  const highest = activePositions
-    .flatMap((item) => (item.position ? [item.position] : []))
-    .sort((a, b) => a.brm_level - b.brm_level)[0];
+/**
+ * Satu penugasan -> jabatan + bidang + sub unit + objek penempatan (siap dikirim ke browser).
+ * Objek penempatan hanya diambil yang PERTAMA, karena ke depan karyawan hanya ditempatkan di satu objek.
+ */
+function toEmployeePlacement(assignment: AssignmentRecord, position: PositionRecord): EmployeePlacement {
+  const { divisions, placementCategories, placementObjects, subUnits } = getStore();
 
-  return highest ?? null;
+  const division = divisions.find((item) => item.id === position.division_id);
+  const subUnit = subUnits.find((item) => item.id === assignment.sub_unit_id);
+  // "Pertama" = urutan master Objek Penempatan (sama dengan toObjectNames).
+  const firstObject = placementObjects.find((item) => assignment.placement_object_ids.includes(item.id));
+  const category = placementCategories.find((item) => item.id === firstObject?.category_id);
+
+  return {
+    assignment_id: assignment.id,
+    id: position.id,
+    title: position.title,
+    brm_level: position.brm_level,
+    job_grade: position.job_grade,
+    assignment_status: assignment.assignment_status,
+    division: division ? { id: division.id, name: division.name } : null,
+    sub_unit: {
+      id: assignment.sub_unit_id,
+      name: subUnit?.name ?? "-",
+      afdeling_code: subUnit?.afdeling_code ?? null,
+    },
+    placement_object: firstObject
+      ? { id: firstObject.id, name: firstObject.name, category_name: category?.name ?? null }
+      : null,
+  };
 }
 
 /**
  * Karyawan siap dikirim ke browser, ditambah isian yang dihitung:
- *   - `position`           = jabatan utama dari penugasan aktif (null = belum ditempatkan)
+ *   - `position`           = jabatan utama + bidang, sub unit, objek (null = belum ditempatkan)
+ *   - `active_positions`   = semua jabatan yang sedang dipegang, jabatan utama di urutan pertama
  *   - `education`, `major` = jenjang & jurusan TERTINGGI di riwayat pendidikan
  *   - `educations`         = diurutkan dari jenjang tertinggi, + alamat file ijazah
  *   - `active_status`      = Belum Aktif / Aktif / Nonaktif (lihat getEmployeeActiveStatus)
@@ -177,7 +216,7 @@ function findMainPosition(employeeId: string, today: string): PositionRecord | n
  *   - `service_months`     = masa kerja dalam bulan, TANPA masa nonaktif
  *   - `missing_fields`     = isian wajib yang masih kosong (draf karyawan)
  *
- * `position`, `active_status`, `inactive_since`, dan `service_months` dihitung PADA TANGGAL `today`
+ * `position`, `active_positions`, `active_status`, `inactive_since`, dan `service_months` dihitung PADA TANGGAL `today`
  * ("YYYY-MM-DD", bawaan hari ini) — dipakai filter Periode Data. Biodata lainnya selalu data terbaru.
  */
 export function toEmployeeProfileResource(
@@ -187,7 +226,7 @@ export function toEmployeeProfileResource(
   // Isi file (file_data) tidak ikut dikirim; yang dikirim alamatnya saja.
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { file_data, ...rest } = employee;
-  const position = findMainPosition(employee.id, today);
+  const placements = findActivePlacements(employee.id, today);
   const highestEducation = findHighestEducation(employee.educations);
   const fileUrl = (query: string) => `/api/employees/${employee.id}/files?${query}`;
 
@@ -206,9 +245,8 @@ export function toEmployeeProfileResource(
     })),
     education: highestEducation?.level ?? "-",
     major: highestEducation?.major ?? null,
-    position: position
-      ? { id: position.id, title: position.title, brm_level: position.brm_level, job_grade: position.job_grade }
-      : null,
+    position: placements[0] ?? null,
+    active_positions: placements,
   };
 }
 
